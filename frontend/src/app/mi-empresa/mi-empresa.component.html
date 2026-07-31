@@ -1,0 +1,91 @@
+<div class="max-w-7xl mx-auto">
+  <div class="mb-8">
+    <h1 class="text-2xl font-bold text-textMain tracking-tight">Mi Empresa</h1>
+    <p class="text-textSecondary mt-1 text-sm">Configura la información y apariencia de tu negocio.</p>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+    
+    <!-- Panel Izquierdo: Configuración Empresa -->
+    <div class="lg:col-span-7 bg-surface rounded-2xl shadow-soft border border-slate-100 p-6 md:p-8">
+      <form [formGroup]="empresaForm" (ngSubmit)="guardarCambios()" class="space-y-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+          
+          <!-- Columna Izquierda: Datos -->
+          <div class="space-y-5">
+            <div>
+              <label class="block text-sm font-medium text-textMain mb-2">Razón Social</label>
+              <input formControlName="razonSocial" type="text" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm" placeholder="Nombre de la empresa">
+            </div>
+            
+            <div>
+              <label class="block text-sm font-medium text-textMain mb-2">NIT / RUT</label>
+              <input formControlName="nit" type="text" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm" placeholder="000000000-0">
+            </div>
+            
+            <div>
+              <label class="block text-sm font-medium text-textMain mb-2">Teléfono</label>
+              <input formControlName="telefono" type="tel" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm" placeholder="Número de contacto">
+            </div>
+            
+            <div>
+              <label class="block text-sm font-medium text-textMain mb-2">Dirección</label>
+              <input formControlName="direccion" type="text" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm" placeholder="Dirección principal">
+            </div>
+            
+            <div>
+              <label class="block text-sm font-medium text-textMain mb-2">Correo Electrónico</label>
+              <input formControlName="correo" type="email" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm" placeholder="contacto@empresa.com">
+            </div>
+          </div>
+
+          <!-- Columna Derecha: Logo -->
+          <div class="h-full flex flex-col">
+            <label class="block text-sm font-medium text-textMain mb-2">Logo de la Empresa</label>
+            <div class="flex-1 flex flex-col justify-center items-center px-6 pt-5 pb-6 border-2 border-slate-200 border-dashed rounded-xl hover:border-primary/50 transition-colors bg-slate-50 group min-h-[300px]">
+              <div class="space-y-4 text-center w-full">
+                <div *ngIf="companyLogo" class="mx-auto mb-6 flex justify-center">
+                  <img [src]="companyLogo" class="h-40 w-auto max-w-full object-contain rounded-lg shadow-sm bg-white p-2 border border-slate-100" />
+                </div>
+                <svg *ngIf="!companyLogo" class="mx-auto h-16 w-16 text-slate-300 group-hover:text-primary/40 transition-colors mb-4" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
+                  <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+                <div class="flex text-sm text-textSecondary justify-center items-center flex-col xl:flex-row gap-2">
+                  <label class="relative cursor-pointer bg-white rounded-lg font-semibold text-primary hover:text-indigo-500 focus-within:outline-none px-4 py-2 shadow-sm border border-slate-200 transition-colors">
+                    <span>Sube un archivo</span>
+                    <input type="file" class="sr-only" accept="image/*" (change)="onLogoUpload($event)">
+                  </label>
+                  <p class="pl-1">o arrastra</p>
+                </div>
+                <p class="text-[10px] text-slate-400 mt-3">PNG, JPG hasta 2MB</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pt-4 mt-2 border-t border-slate-100 flex justify-between items-center">
+          <div>
+            <span *ngIf="savedSuccessfully" class="text-success text-sm font-medium flex items-center gap-1">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+              Guardados con éxito
+            </span>
+            <span *ngIf="saveError" class="text-red-500 text-sm font-medium flex items-center gap-1 bg-red-50 px-3 py-1.5 rounded-lg border border-red-100">
+              <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              {{ saveError }}
+            </span>
+          </div>
+          <button type="submit" [disabled]="empresaForm.invalid || isSaving" class="px-6 py-2.5 bg-primary hover:bg-indigo-600 disabled:bg-indigo-300 disabled:cursor-not-allowed text-white font-medium rounded-xl shadow-sm transition-all transform hover:-translate-y-0.5 flex items-center gap-2">
+            <svg *ngIf="isSaving" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+            {{ isSaving ? 'Guardando...' : 'Guardar Cambios' }}
+          </button>
+        </div>
+      </form>
+    </div>
+    
+    <!-- Panel Derecho: Atributos y Variaciones -->
+    <div class="lg:col-span-5">
+      <app-configuracion-atributos></app-configuracion-atributos>
+    </div>
+    
+  </div>
+</div>

@@ -1,0 +1,193 @@
+<div class="p-6">
+  <!-- Info Empresa Header -->
+  <div class="flex items-center gap-4 mb-6 bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+    <div class="w-24 h-24 rounded-xl overflow-hidden border border-slate-200 bg-slate-50 flex items-center justify-center flex-shrink-0">
+      <img *ngIf="empresaLogo" [src]="empresaLogo" class="w-full h-full object-cover">
+      <span *ngIf="!empresaLogo" class="text-slate-400 font-bold">Logo</span>
+    </div>
+    <div>
+      <h2 class="text-2xl font-bold text-textMain">{{ empresaNombre }}</h2>
+      <p class="text-sm font-medium text-textSecondary">NIT/RUT: {{ empresaNit }} <span class="mx-2 text-slate-300">|</span> Reportes Consolidados</p>
+    </div>
+  </div>
+
+  <h3 class="text-xl font-bold mb-4 text-textMain">Módulos de Reporte</h3>
+  
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+    <div (click)="setReporte('ventas')" [class.border-primary]="activeReport === 'ventas'" class="bg-surface rounded-xl p-5 shadow-soft border hover:border-primary/50 transition cursor-pointer group">
+      <div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-500 mb-3 group-hover:scale-110 transition">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+      </div>
+      <h3 class="font-semibold text-textMain">Reporte de Ventas</h3>
+      <p class="text-xs text-textSecondary mt-1">Historial, ganancias y tendencias.</p>
+    </div>
+    
+    <div (click)="setReporte('compras')" [class.border-primary]="activeReport === 'compras'" class="bg-surface rounded-xl p-5 shadow-soft border hover:border-primary/50 transition cursor-pointer group">
+      <div class="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center text-green-500 mb-3 group-hover:scale-110 transition">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
+      </div>
+      <h3 class="font-semibold text-textMain">Reporte de Compras</h3>
+      <p class="text-xs text-textSecondary mt-1">Gastos, proveedores e inversión.</p>
+    </div>
+    
+    <div (click)="setReporte('inventarios')" [class.border-primary]="activeReport === 'inventarios'" class="bg-surface rounded-xl p-5 shadow-soft border hover:border-primary/50 transition cursor-pointer group">
+      <div class="w-10 h-10 rounded-full bg-purple-50 flex items-center justify-center text-purple-500 mb-3 group-hover:scale-110 transition">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
+      </div>
+      <h3 class="font-semibold text-textMain">Inventarios</h3>
+      <p class="text-xs text-textSecondary mt-1">Stock actual, rotación y valorización.</p>
+    </div>
+
+    <div class="bg-surface rounded-xl p-5 shadow-soft border border-slate-100 flex flex-col justify-center items-center text-center">
+      <div class="w-full grid grid-cols-2 gap-2 mb-2">
+        <button (click)="exportarActualExcel()" class="flex flex-col items-center justify-center gap-1 bg-green-50 hover:bg-green-100 text-green-600 px-3 py-2 rounded-lg font-medium transition">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+          <span class="text-sm">Excel</span>
+        </button>
+        <button (click)="exportarActualPDF()" class="flex flex-col items-center justify-center gap-1 bg-red-50 hover:bg-red-100 text-red-600 px-3 py-2 rounded-lg font-medium transition">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+          <span class="text-sm">PDF</span>
+        </button>
+      </div>
+      <span class="text-[11px] text-textSecondary">Descarga los datos filtrados en formato .xlsx o .pdf</span>
+    </div>
+  </div>
+
+  <div class="bg-surface rounded-xl shadow-soft border border-slate-100 overflow-hidden">
+    <div class="p-6 border-b border-slate-100 flex justify-between items-center">
+      <h3 class="text-xl font-bold text-textMain">Vista Previa de Datos <span *ngIf="activeReportTitle" class="text-primary">- {{activeReportTitle}}</span></h3>
+      <div class="flex gap-2">
+        <input type="date" [(ngModel)]="fechaInicio" class="border border-slate-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:border-primary">
+        <input type="date" [(ngModel)]="fechaFin" class="border border-slate-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:border-primary">
+        <button (click)="loadData()" [disabled]="!activeReport || isLoading" class="bg-primary text-white px-4 py-1.5 rounded-lg text-sm hover:bg-primary/90 transition disabled:opacity-50">Filtrar</button>
+      </div>
+    </div>
+    <div class="p-6">
+      
+      <!-- Placeholder -->
+      <div *ngIf="!activeReport" class="text-center text-textSecondary py-12 flex flex-col items-center">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-slate-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+        <p>Seleccione un módulo de la parte superior para cargar la tabla de datos.</p>
+      </div>
+
+      <!-- Loading State -->
+      <div *ngIf="isLoading" class="py-12 flex justify-center items-center">
+        <svg class="animate-spin h-8 w-8 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+      </div>
+
+      <!-- Toolbar Tabla -->
+      <div *ngIf="activeReport && !isLoading && reportData.length > 0" class="mb-4 flex flex-col sm:flex-row justify-between items-center gap-4 bg-slate-50/50 p-4 rounded-xl border border-slate-200">
+        <div class="flex items-center gap-2">
+          <span class="text-sm font-medium text-slate-500">Mostrar</span>
+          <select [(ngModel)]="itemsPerPage" (change)="currentPage = 1" class="bg-white border border-slate-300 text-slate-700 text-sm rounded-lg focus:ring-primary focus:border-primary block p-2 outline-none shadow-sm cursor-pointer font-medium">
+            <option [value]="5">5</option>
+            <option [value]="10">10</option>
+            <option [value]="25">25</option>
+            <option [value]="50">50</option>
+          </select>
+          <span class="text-sm font-medium text-slate-500">registros</span>
+        </div>
+        
+        <div class="relative w-full sm:w-72">
+          <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+          </div>
+          <input type="text" [(ngModel)]="searchTerm" (ngModelChange)="onSearchChange()" class="bg-white border border-slate-300 text-slate-900 text-sm rounded-xl focus:ring-primary focus:border-primary block w-full pl-10 p-2.5 outline-none shadow-sm transition-all placeholder-slate-400" placeholder="Buscar...">
+        </div>
+      </div>
+
+      <!-- Tabla Ventas -->
+      <div *ngIf="activeReport === 'ventas' && !isLoading" class="overflow-x-auto">
+        <table class="w-full text-left border-collapse text-sm">
+          <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
+            <tr>
+              <th class="p-3">Ticket</th>
+              <th class="p-3">Fecha</th>
+              <th class="p-3">Cliente</th>
+              <th class="p-3">Vendedor</th>
+              <th class="p-3 text-right">Total</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            <tr *ngFor="let item of paginatedData" class="hover:bg-slate-50">
+              <td class="p-3 font-mono text-indigo-600">{{item.numero_ticket}}</td>
+              <td class="p-3 text-slate-600">{{item.fecha | date:'dd/MM/yyyy HH:mm'}}</td>
+              <td class="p-3">{{item.cliente_nombre || 'Cliente General'}}</td>
+              <td class="p-3 text-slate-600">{{item.vendedor_nombre}}</td>
+              <td class="p-3 text-right font-bold text-emerald-600">{{item.total | currency:'COP':'symbol':'1.0-0'}}</td>
+            </tr>
+            <tr *ngIf="paginatedData.length === 0"><td colspan="5" class="p-6 text-center text-slate-400">No hay datos coincidentes</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Tabla Compras -->
+      <div *ngIf="activeReport === 'compras' && !isLoading" class="overflow-x-auto">
+        <table class="w-full text-left border-collapse text-sm">
+          <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
+            <tr>
+              <th class="p-3">Factura</th>
+              <th class="p-3">Fecha</th>
+              <th class="p-3 text-right">Total</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            <tr *ngFor="let item of paginatedData" class="hover:bg-slate-50">
+              <td class="p-3 font-mono text-indigo-600">{{item.numero_factura_proveedor}}</td>
+              <td class="p-3 text-slate-600">{{item.fecha_compra | date:'dd/MM/yyyy'}}</td>
+              <td class="p-3 text-right font-bold text-emerald-600">{{item.total_compra | currency:'COP':'symbol':'1.0-0'}}</td>
+            </tr>
+            <tr *ngIf="paginatedData.length === 0"><td colspan="3" class="p-6 text-center text-slate-400">No hay datos coincidentes</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Tabla Inventarios -->
+      <div *ngIf="activeReport === 'inventarios' && !isLoading" class="overflow-x-auto">
+        <table class="w-full text-left border-collapse text-sm">
+          <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
+            <tr>
+              <th class="p-3">SKU</th>
+              <th class="p-3">Producto</th>
+              <th class="p-3 text-center">Stock Actual</th>
+              <th class="p-3 text-right">V. Venta</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            <tr *ngFor="let item of paginatedData" class="hover:bg-slate-50">
+              <td class="p-3 font-mono text-indigo-600">{{item.sku}}</td>
+              <td class="p-3 font-medium">{{item.nombre}}</td>
+              <td class="p-3 text-center font-bold text-slate-700">{{item.stock}}</td>
+              <td class="p-3 text-right text-slate-700 font-semibold">{{item.precio_venta | currency:'COP':'symbol':'1.0-0'}}</td>
+            </tr>
+            <tr *ngIf="paginatedData.length === 0"><td colspan="4" class="p-6 text-center text-slate-400">No hay inventario coincidente</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Paginación -->
+      <div *ngIf="activeReport && !isLoading && reportData.length > 0" class="mt-4 border-t border-slate-200 pt-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+        <span class="text-sm text-slate-600 font-medium">
+          Mostrando <span class="font-bold text-slate-900">{{ filteredData.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1 }}</span> a 
+          <span class="font-bold text-slate-900">{{ currentPage * itemsPerPage > filteredData.length ? filteredData.length : currentPage * itemsPerPage }}</span> de 
+          <span class="font-bold text-slate-900">{{ filteredData.length }}</span> registros
+        </span>
+        
+        <div class="flex items-center gap-1">
+          <button (click)="changePage(currentPage - 1)" [disabled]="currentPage === 1" class="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center gap-1 shadow-sm">
+            Anterior
+          </button>
+          
+          <div class="flex items-center gap-1 px-2">
+            <span class="text-sm font-bold text-slate-800 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">{{ currentPage }} / {{ totalPages }}</span>
+          </div>
+          
+          <button (click)="changePage(currentPage + 1)" [disabled]="currentPage === totalPages || totalPages === 0" class="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center gap-1 shadow-sm">
+            Siguiente
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>

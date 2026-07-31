@@ -1,0 +1,72 @@
+# ============================================
+# SISTEMA VENTAS SaaS — Docker Compose
+# Run: docker compose up --build
+# ============================================
+
+services:
+  # ── PostgreSQL Database ──
+  postgres:
+    image: postgres:16-alpine
+    container_name: saas-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sistema_ventas
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Admin123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - saas-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d sistema_ventas"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    # NOTE: No 'ports' section — PostgreSQL is NOT exposed to the host.
+    # Only accessible from within the saas-network (by 'backend').
+
+  # ── NestJS Backend API ──
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: saas-backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - saas-network
+    # NOTE: No 'ports' section — Backend is NOT exposed to the host.
+    # Only accessible via Nginx reverse proxy from 'frontend'.
+
+  # ── Angular Frontend (Nginx) ──
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: saas-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - saas-network
+
+# ── Isolated Bridge Network ──
+networks:
+  saas-network:
+    driver: bridge
+    name: saas-network
+
+# ── Persistent Volume for Database ──
+volumes:
+  postgres_data:
+    name: saas-postgres-data

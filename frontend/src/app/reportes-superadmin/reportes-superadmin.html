@@ -1,0 +1,227 @@
+<div class="p-4 sm:p-6 lg:p-8 bg-slate-50 min-h-screen font-sans">
+  <div class="mb-8">
+    <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-800 tracking-tight">Reportes Globales (Super Admin)</h2>
+    <p class="text-slate-500 text-sm mt-1">Genera y exporta información consolidada de tu plataforma SaaS.</p>
+  </div>
+  
+  <!-- Selectores de Reporte -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    
+    <!-- Reporte Empresas -->
+    <div (click)="seleccionarReporte('EMPRESAS')" 
+         class="bg-white rounded-2xl p-6 shadow-sm border transition-all cursor-pointer relative overflow-hidden group"
+         [ngClass]="reporteSeleccionado === 'EMPRESAS' ? 'border-indigo-500 ring-1 ring-indigo-500' : 'border-slate-200 hover:border-indigo-300'">
+      <div class="absolute right-0 top-0 w-16 h-16 bg-indigo-50 rounded-bl-full -mr-2 -mt-2 transition-transform group-hover:scale-110"></div>
+      <h3 class="text-lg font-bold text-slate-800 mb-2 relative z-10 flex items-center gap-2">
+        <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+        Listado de Empresas
+      </h3>
+      <p class="text-slate-500 text-sm mb-4 relative z-10">Métricas e información general de todas las empresas registradas en la plataforma.</p>
+      <button class="bg-indigo-50 text-indigo-600 px-4 py-2 rounded-lg font-semibold text-sm hover:bg-indigo-100 transition w-full"
+              [ngClass]="{'bg-indigo-600 text-white hover:bg-indigo-700': reporteSeleccionado === 'EMPRESAS'}">
+        {{ reporteSeleccionado === 'EMPRESAS' ? 'Reporte Seleccionado' : 'Ver Reporte' }}
+      </button>
+    </div>
+    
+    <!-- Reporte Administradores -->
+    <div (click)="seleccionarReporte('ADMINS')"
+         class="bg-white rounded-2xl p-6 shadow-sm border transition-all cursor-pointer relative overflow-hidden group"
+         [ngClass]="reporteSeleccionado === 'ADMINS' ? 'border-purple-500 ring-1 ring-purple-500' : 'border-slate-200 hover:border-purple-300'">
+      <div class="absolute right-0 top-0 w-16 h-16 bg-purple-50 rounded-bl-full -mr-2 -mt-2 transition-transform group-hover:scale-110"></div>
+      <h3 class="text-lg font-bold text-slate-800 mb-2 relative z-10 flex items-center gap-2">
+        <svg class="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+        Administradores
+      </h3>
+      <p class="text-slate-500 text-sm mb-4 relative z-10">Directorio consolidado de todos los administradores del sistema por empresa.</p>
+      <button class="bg-purple-50 text-purple-600 px-4 py-2 rounded-lg font-semibold text-sm hover:bg-purple-100 transition w-full"
+              [ngClass]="{'bg-purple-600 text-white hover:bg-purple-700': reporteSeleccionado === 'ADMINS'}">
+        {{ reporteSeleccionado === 'ADMINS' ? 'Reporte Seleccionado' : 'Ver Reporte' }}
+      </button>
+    </div>
+    
+    <!-- Reporte Finanzas -->
+    <div (click)="seleccionarReporte('FINANZAS')"
+         class="bg-white rounded-2xl p-6 shadow-sm border transition-all cursor-pointer relative overflow-hidden group"
+         [ngClass]="reporteSeleccionado === 'FINANZAS' ? 'border-emerald-500 ring-1 ring-emerald-500' : 'border-slate-200 hover:border-emerald-300'">
+      <div class="absolute right-0 top-0 w-16 h-16 bg-emerald-50 rounded-bl-full -mr-2 -mt-2 transition-transform group-hover:scale-110"></div>
+      <h3 class="text-lg font-bold text-slate-800 mb-2 relative z-10 flex items-center gap-2">
+        <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        Finanzas Globales
+      </h3>
+      <p class="text-slate-500 text-sm mb-4 relative z-10">Estado de suscripciones, estimación de ingresos y métricas de volumen.</p>
+      <button class="bg-emerald-50 text-emerald-600 px-4 py-2 rounded-lg font-semibold text-sm hover:bg-emerald-100 transition w-full"
+              [ngClass]="{'bg-emerald-600 text-white hover:bg-emerald-700': reporteSeleccionado === 'FINANZAS'}">
+        {{ reporteSeleccionado === 'FINANZAS' ? 'Reporte Seleccionado' : 'Ver Reporte' }}
+      </button>
+    </div>
+  </div>
+
+  <!-- Contenedor del Reporte -->
+  <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden min-h-[400px]">
+    
+    <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-50/50">
+      <div>
+        <h3 class="text-xl font-bold text-slate-800">Resumen Consolidado</h3>
+        <p class="text-sm text-slate-500" *ngIf="reporteSeleccionado === 'EMPRESAS'">Mostrando listado general de inquilinos SaaS.</p>
+        <p class="text-sm text-slate-500" *ngIf="reporteSeleccionado === 'ADMINS'">Mostrando usuarios administrativos de todas las cuentas.</p>
+        <p class="text-sm text-slate-500" *ngIf="reporteSeleccionado === 'FINANZAS'">Mostrando salud financiera de suscripciones.</p>
+      </div>
+      
+      <div class="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto flex-wrap justify-end">
+        
+        <!-- Buscador -->
+        <div class="relative w-full md:w-64" *ngIf="reporteSeleccionado">
+          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <svg class="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+          </div>
+          <input type="text" [(ngModel)]="searchTerm" (ngModelChange)="onSearchChange()" placeholder="Buscar..." class="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white">
+        </div>
+
+        <div class="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-slate-200">
+          <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+          <input type="date" [(ngModel)]="fechaInicio" (change)="filtrarPorFecha()" class="text-sm bg-transparent border-none focus:ring-0 text-slate-600 outline-none">
+          <span class="text-slate-400 text-xs font-semibold">a</span>
+          <input type="date" [(ngModel)]="fechaFin" (change)="filtrarPorFecha()" class="text-sm bg-transparent border-none focus:ring-0 text-slate-600 outline-none">
+        </div>
+        
+        <button (click)="exportarGeneral()" [disabled]="!reporteSeleccionado" 
+                class="flex items-center justify-center gap-2 text-sm bg-emerald-50 text-emerald-600 border border-emerald-200 px-4 py-2 rounded-xl font-semibold hover:bg-emerald-100 transition disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto">
+          <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+          Exportar a Excel
+        </button>
+      </div>
+    </div>
+
+    <!-- Estado de Carga -->
+    <div *ngIf="loading" class="p-12 flex flex-col items-center justify-center">
+      <svg class="animate-spin h-8 w-8 text-indigo-500 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      </svg>
+      <p class="text-slate-500">Cargando datos del sistema...</p>
+    </div>
+
+    <!-- Estado Inicial -->
+    <div *ngIf="!reporteSeleccionado && !loading" class="p-16 flex flex-col items-center justify-center text-center">
+      <div class="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 mb-4">
+        <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+      </div>
+      <h3 class="text-lg font-bold text-slate-700 mb-2">No hay un reporte activo</h3>
+      <p class="text-slate-500 max-w-sm">Seleccione uno de los tres módulos en la parte superior para visualizar las métricas y permitir la exportación.</p>
+    </div>
+
+    <!-- Tabla Empresas -->
+    <div *ngIf="reporteSeleccionado === 'EMPRESAS' && !loading" class="overflow-x-auto">
+      <table class="w-full text-left border-collapse">
+        <thead>
+          <tr class="bg-slate-50 border-b border-slate-200 text-xs text-slate-500 uppercase tracking-wider">
+            <th class="p-4 font-semibold">Razón Social</th>
+            <th class="p-4 font-semibold">NIT / Documento</th>
+            <th class="p-4 font-semibold">Fecha Creación</th>
+            <th class="p-4 font-semibold">Estado de Suscripción</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          <tr *ngFor="let emp of paginatedEmpresas" class="hover:bg-slate-50/50 transition-colors">
+            <td class="p-4 font-bold text-slate-800">{{ emp.nombre }}</td>
+            <td class="p-4 text-slate-500 font-mono text-sm">{{ emp.documento }}</td>
+            <td class="p-4 text-slate-600 text-sm">{{ emp.fecha_creacion | date:'mediumDate' }}</td>
+            <td class="p-4">
+              <span *ngIf="emp.is_active" class="bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-md text-xs font-semibold border border-emerald-200">Activa</span>
+              <span *ngIf="!emp.is_active" class="bg-rose-100 text-rose-700 px-2.5 py-1 rounded-md text-xs font-semibold border border-rose-200">Inactiva / Vencida</span>
+            </td>
+          </tr>
+          <tr *ngIf="datosEmpresas.length === 0">
+            <td colspan="4" class="p-8 text-center text-slate-500">No hay empresas registradas.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Tabla Admins -->
+    <div *ngIf="reporteSeleccionado === 'ADMINS' && !loading" class="overflow-x-auto">
+      <table class="w-full text-left border-collapse">
+        <thead>
+          <tr class="bg-slate-50 border-b border-slate-200 text-xs text-slate-500 uppercase tracking-wider">
+            <th class="p-4 font-semibold">Empresa Asociada</th>
+            <th class="p-4 font-semibold">Nombre del Administrador</th>
+            <th class="p-4 font-semibold">Correo Electrónico</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          <tr *ngFor="let admin of paginatedAdmins" class="hover:bg-slate-50/50 transition-colors">
+            <td class="p-4">
+              <span class="bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-md text-xs font-semibold">{{ admin.empresa_nombre }}</span>
+            </td>
+            <td class="p-4 font-bold text-slate-800">{{ admin.nombre }}</td>
+            <td class="p-4 text-slate-500 text-sm">{{ admin.email }}</td>
+          </tr>
+          <tr *ngIf="datosAdmins.length === 0">
+            <td colspan="3" class="p-8 text-center text-slate-500">No hay administradores registrados.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Tabla Finanzas -->
+    <div *ngIf="reporteSeleccionado === 'FINANZAS' && !loading" class="overflow-x-auto">
+      <table class="w-full text-left border-collapse">
+        <thead>
+          <tr class="bg-slate-50 border-b border-slate-200 text-xs text-slate-500 uppercase tracking-wider">
+            <th class="p-4 font-semibold">Empresa</th>
+            <th class="p-4 font-semibold text-center">Suscripción Activa</th>
+            <th class="p-4 font-semibold text-center">Usuarios Activos</th>
+            <th class="p-4 font-semibold text-right">Cuota Mensual (SaaS)</th>
+            <th class="p-4 font-semibold text-right">Vol. Ventas (Estimado)</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          <tr *ngFor="let fin of paginatedFinanzas" class="hover:bg-slate-50/50 transition-colors">
+            <td class="p-4 font-bold text-slate-800">{{ fin.empresa_nombre }}</td>
+            <td class="p-4 text-center">
+               <svg *ngIf="fin.suscripcion_activa" class="w-5 h-5 text-emerald-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+               <svg *ngIf="!fin.suscripcion_activa" class="w-5 h-5 text-rose-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </td>
+            <td class="p-4 text-slate-600 text-center font-bold">{{ fin.usuarios_activos }}</td>
+            <td class="p-4 text-emerald-600 text-sm font-bold text-right">{{ fin.ingresos_mensuales | currency:'COP':'symbol':'1.0-0' }}</td>
+            <td class="p-4 text-slate-600 text-sm font-medium text-right">{{ fin.total_ventas_estimado | currency:'COP':'symbol':'1.0-0' }}</td>
+          </tr>
+          <tr *ngIf="datosFinanzas.length === 0">
+            <td colspan="5" class="p-8 text-center text-slate-500">No hay datos financieros disponibles.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Paginación -->
+    <div *ngIf="reporteSeleccionado && !loading && totalItems > 0" class="px-6 py-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between bg-slate-50/50 gap-4">
+      <div class="flex items-center gap-4">
+        <div class="flex items-center gap-2">
+          <span class="text-sm text-slate-500">Mostrar</span>
+          <select [(ngModel)]="pageSize" (change)="changePageSize()" class="border border-slate-200 rounded-lg text-sm px-2 py-1 focus:ring-indigo-500 focus:border-indigo-500 bg-white">
+            <option [ngValue]="10">10</option>
+            <option [ngValue]="25">25</option>
+            <option [ngValue]="50">50</option>
+            <option [ngValue]="100">100</option>
+          </select>
+        </div>
+        <p class="text-sm text-slate-500 hidden sm:block">
+          Mostrando <span class="font-medium">{{ totalItems > 0 ? startIndex + 1 : 0 }}</span> a <span class="font-medium">{{ endIndex }}</span> de <span class="font-medium">{{ totalItems }}</span> resultados
+        </p>
+      </div>
+      <div class="flex items-center">
+        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+            <button (click)="previousPage()" [disabled]="currentPage === 1" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-slate-200 bg-white text-sm font-medium text-slate-500 hover:bg-slate-50 disabled:opacity-50 transition-colors">
+              <span class="sr-only">Anterior</span>
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+            </button>
+            <button (click)="nextPage()" [disabled]="currentPage === totalPages" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-slate-200 bg-white text-sm font-medium text-slate-500 hover:bg-slate-50 disabled:opacity-50 transition-colors">
+              <span class="sr-only">Siguiente</span>
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+            </button>
+        </nav>
+      </div>
+    </div>
+
+  </div>
+</div>

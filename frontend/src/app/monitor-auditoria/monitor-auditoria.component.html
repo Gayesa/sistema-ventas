@@ -1,0 +1,136 @@
+<div class="monitor-container" style="padding: 20px;">
+  <h2 style="margin-bottom: 20px;">Monitor de Auditoría (Logs de Control Interno)</h2>
+  
+  <!-- BARRA DE FILTROS Y ACCIONES -->
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+    <div style="display: flex; gap: 15px;">
+      <div style="display: flex; flex-direction: column;">
+        <label style="font-size: 12px; font-weight: bold; color: gray;">Búsqueda Global</label>
+        <input type="text" placeholder="Buscar en todo..." [(ngModel)]="searchTerm" (input)="aplicarFiltros()" style="padding: 8px; border: 1px solid #d1d5db; border-radius: 4px;">
+      </div>
+    </div>
+    
+    <div style="display: flex; gap: 10px;">
+      <button (click)="exportarExcel()" style="background-color: #dcfce7; color: #166534; border: 1px solid #bbf7d0; padding: 8px 16px; border-radius: 6px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: background 0.2s;" onmouseover="this.style.background='#bbf7d0'" onmouseout="this.style.background='#dcfce7'" title="Exportar a Excel">
+        <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+        Excel
+      </button>
+      <button (click)="exportarPDF()" style="background-color: #fee2e2; color: #991b1b; border: 1px solid #fecaca; padding: 8px 16px; border-radius: 6px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: background 0.2s;" onmouseover="this.style.background='#fecaca'" onmouseout="this.style.background='#fee2e2'" title="Exportar a PDF">
+        <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+        PDF
+      </button>
+    </div>
+  </div>
+
+  <!-- TABLA DATAGRID -->
+  <table style="width: 100%; border-collapse: collapse; text-align: left; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+    <thead style="background-color: #1f2937; color: white;">
+      <tr>
+        <th style="padding: 15px;">Fecha del Evento</th>
+        <th style="padding: 15px;">Usuario (Autor)</th>
+        <th style="padding: 15px;">Tabla Mutada</th>
+        <th style="padding: 15px;">
+          Acción
+          <select [(ngModel)]="filtroAccion" (change)="aplicarFiltros()" style="margin-left: 5px; padding: 2px; border-radius: 4px;">
+            <option value="">Todas</option>
+            <option value="UPDATE">UPDATE</option>
+            <option value="DELETE">DELETE</option>
+            <option value="INSERT">INSERT</option>
+          </select>
+        </th>
+        <th style="padding: 15px;">Auditoría JSON</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let log of paginatedLogs" style="border-bottom: 1px solid #e5e7eb; transition: background 0.2s;" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='white'">
+        <td style="padding: 15px; color: #4b5563;">{{ log.fecha | date:'dd/MM/yyyy HH:mm:ss' }}</td>
+        <td style="padding: 15px; font-weight: 500;">{{ log.usuario_id }}</td>
+        <td style="padding: 15px;">
+          <span style="background: #e5e7eb; padding: 4px 8px; border-radius: 4px; font-size: 12px;">{{ log.tabla_afectada }}</span>
+        </td>
+        <td style="padding: 15px;">
+          <span [ngStyle]="{
+            'color': log.accion === 'DELETE' ? '#dc2626' : log.accion === 'UPDATE' ? '#d97706' : '#16a34a',
+            'background': log.accion === 'DELETE' ? '#fef2f2' : log.accion === 'UPDATE' ? '#fffbeb' : '#f0fdf4',
+            'padding': '4px 10px', 'border-radius': '999px', 'font-size': '12px', 'font-weight': 'bold'
+          }">
+            {{ log.accion }}
+          </span>
+        </td>
+        <td style="padding: 15px;">
+          <button *ngIf="log.accion === 'UPDATE'" (click)="abrirModalComparacion(log)" style="background: #3b82f6; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+            Revisar Cambios
+          </button>
+          <span *ngIf="log.accion !== 'UPDATE'" style="color: #9ca3af; font-size: 0.9em;">
+            Copia Segura Guardada
+          </span>
+        </td>
+      </tr>
+      <tr *ngIf="paginatedLogs.length === 0">
+        <td colspan="5" style="padding: 20px; text-align: center; color: #6b7280;">No se encontraron registros de auditoría.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- PAGINACIÓN -->
+  <div style="display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px; border-radius: 8px; margin-top: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <span style="font-size: 14px; color: #4b5563;">Mostrar</span>
+      <select [(ngModel)]="pageSize" (change)="changePageSize()" style="padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 6px; background: white; font-size: 14px;">
+        <option [ngValue]="10">10</option>
+        <option [ngValue]="25">25</option>
+        <option [ngValue]="50">50</option>
+        <option [ngValue]="100">100</option>
+      </select>
+      <span style="font-size: 14px; color: #4b5563;">
+        Mostrando <span style="font-weight: bold;">{{ filteredLogs.length > 0 ? startIndex + 1 : 0 }}</span> a <span style="font-weight: bold;">{{ endIndex }}</span> de <span style="font-weight: bold;">{{ filteredLogs.length }}</span> resultados
+      </span>
+    </div>
+    
+    <div style="display: flex; gap: 5px;">
+      <button (click)="previousPage()" [disabled]="currentPage === 1" style="padding: 6px 12px; border: 1px solid #d1d5db; background: white; border-radius: 6px; cursor: pointer;" [style.opacity]="currentPage === 1 ? '0.5' : '1'">Anterior</button>
+      <button (click)="nextPage()" [disabled]="currentPage === totalPages" style="padding: 6px 12px; border: 1px solid #d1d5db; background: white; border-radius: 6px; cursor: pointer;" [style.opacity]="currentPage === totalPages ? '0.5' : '1'">Siguiente</button>
+    </div>
+  </div>
+
+  <!-- MODAL DE COMPARACIÓN -->
+  <div *ngIf="isModalOpen" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(4px);">
+    <div style="background: white; padding: 30px; border-radius: 12px; width: 650px; max-width: 90%; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
+      
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f3f4f6; padding-bottom: 15px; margin-bottom: 20px;">
+        <h3 style="margin: 0; color: #111827;">Trazabilidad en tabla: <span style="color: #3b82f6;">{{ selectedLog.tabla_afectada }}</span></h3>
+        <button (click)="cerrarModal()" style="border: none; background: #f3f4f6; width: 32px; height: 32px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; color: #4b5563; font-weight: bold;">&times;</button>
+      </div>
+
+      <p style="color: gray; margin-bottom: 15px;">A continuación se resaltan únicamente los campos (keys) que sufrieron mutaciones durante la petición.</p>
+
+      <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px; border-radius: 8px; overflow: hidden; box-shadow: 0 0 0 1px #e5e7eb;">
+        <thead>
+          <tr>
+            <th style="text-align: left; padding: 12px; background: #f9fafb; border-bottom: 1px solid #e5e7eb;">Campo Afectado</th>
+            <th style="text-align: left; padding: 12px; background: #fef2f2; border-bottom: 1px solid #e5e7eb; color: #991b1b;">Antes (Vulnerable)</th>
+            <th style="text-align: left; padding: 12px; background: #f0fdf4; border-bottom: 1px solid #e5e7eb; color: #166534;">Después (Fijado)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Inyectamos el algoritmo dinámico -->
+          <tr *ngFor="let diff of getCambiosVisuales(selectedLog.valores_anteriores, selectedLog.valores_nuevos)" style="border-bottom: 1px solid #e5e7eb;">
+            <td style="padding: 12px; font-weight: 600; font-family: monospace; color: #1f2937;">{{ diff.key }}</td>
+            <td style="padding: 12px; font-family: monospace; color: #b91c1c; background: #fffcfc;">
+              <del>{{ diff.old | json }}</del>
+            </td>
+            <td style="padding: 12px; font-family: monospace; color: #15803d; background: #fcfffd;">
+              {{ diff.new | json }}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div style="text-align: right;">
+        <button (click)="cerrarModal()" style="background: #3b82f6; color: white; padding: 10px 20px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">Entendido</button>
+      </div>
+      
+    </div>
+  </div>
+</div>

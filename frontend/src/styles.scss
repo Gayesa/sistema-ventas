@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-background text-textMain antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+}
+
+@layer components {
+  .active-nav-link {
+    background-color: #eef2ff !important;
+    color: #4338ca !important;
+    font-weight: 700 !important;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+    border: 1px solid #e0e7ff !important;
+  }
+  .active-nav-link svg {
+    color: #4338ca !important;
+  }
+}
