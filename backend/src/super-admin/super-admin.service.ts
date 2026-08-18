@@ -197,14 +197,29 @@ export class SuperAdminService {
       }
       const admin = await queryRunner.manager.findOne(Usuario, { where: adminQuery });
       if (admin) {
-        admin.nombre = updateData.nombrePropietario;
-        admin.email = updateData.emailPropietario;
-        
+        if (updateData.nombrePropietario) admin.nombre = updateData.nombrePropietario;
+        if (updateData.emailPropietario) admin.email = updateData.emailPropietario;
+
         if (updateData.passwordPropietario && updateData.passwordPropietario.trim() !== '') {
           const salt = await bcrypt.genSalt();
           admin.password = await bcrypt.hash(updateData.passwordPropietario, salt);
         }
         await queryRunner.manager.save(admin);
+      } else if (updateData.emailPropietario && updateData.emailPropietario.trim() !== '') {
+        const salt = await bcrypt.genSalt();
+        const rawPassword = (updateData.passwordPropietario && updateData.passwordPropietario.trim() !== '')
+          ? updateData.passwordPropietario
+          : '123456';
+        const hashedPassword = await bcrypt.hash(rawPassword, salt);
+
+        const nuevoAdmin = queryRunner.manager.create(Usuario, {
+          nombre: updateData.nombrePropietario || 'Administrador',
+          email: updateData.emailPropietario.trim(),
+          password: hashedPassword,
+          rol: 'ADMIN_TIENDA',
+          empresa_id: empresaId,
+        });
+        await queryRunner.manager.save(nuevoAdmin);
       }
 
       await queryRunner.commitTransaction();
