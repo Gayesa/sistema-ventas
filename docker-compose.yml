@@ -23,8 +23,9 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
-    # NOTE: No 'ports' section — PostgreSQL is NOT exposed to the host.
-    # Only accessible from within the saas-network (by 'backend').
+    ports:
+      - "5432:5432"
+    # Accessible from host for local 'npm run start:dev'
 
   # ── NestJS Backend API ──
   backend:

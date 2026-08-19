@@ -5,8 +5,8 @@ import { ProductoVariante } from '../../catalogo/entities/producto-variante.enti
 @Entity()
 export class DetalleCompra {
   @PrimaryGeneratedColumn('uuid') id: string;
-  @Column() compra_id: string;
-  @Column() producto_id: string;
+  @Column({ type: 'uuid' }) compra_id: string;
+  @Column({ type: 'uuid' }) producto_id: string;
   @Column() cantidad: number;
   @Column() costo_unitario: number;
   @Column() subtotal: number;
