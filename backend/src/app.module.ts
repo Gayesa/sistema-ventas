@@ -13,6 +13,9 @@ import { EmpresasModule } from './empresas/empresas.module';
 import { ProveedoresModule } from './proveedores/proveedores.module';
 import { VentasModule } from './ventas/ventas.module';
 import { HealthModule } from './health/health.module';
+import { UploadModule } from './upload/upload.module';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
 
 import { ClsModule } from 'nestjs-cls';
 import * as Joi from 'joi';
@@ -99,6 +102,13 @@ import * as Joi from 'joi';
     EmpresasModule,
     ProveedoresModule,
     VentasModule,
+    UploadModule,
+
+    // ── Servir Archivos Estáticos (Logos, imágenes) ──
+    ServeStaticModule.forRoot({
+      rootPath: join(__dirname, '..', 'uploads'),
+      serveRoot: '/api/uploads',
+    }),
   ],
   controllers: [AppController],
   providers: [AppService],

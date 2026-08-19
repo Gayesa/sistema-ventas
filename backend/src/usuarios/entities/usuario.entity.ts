@@ -8,4 +8,5 @@ export class Usuario {
   @Column({ nullable: true }) email: string;
   @Column({ nullable: true }) password?: string;
   @Column({ nullable: true }) rol?: string;
+  @Column({ default: true }) activo: boolean;
 }

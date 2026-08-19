@@ -38,6 +38,8 @@ services:
     environment:
       - DB_HOST=postgres
       - DB_PORT=5432
+    volumes:
+      - uploads_data:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -70,3 +72,5 @@ networks:
 volumes:
   postgres_data:
     name: saas-postgres-data
+  uploads_data:
+    name: saas-uploads-data

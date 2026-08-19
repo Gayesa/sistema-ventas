@@ -6,6 +6,7 @@ import { Usuario } from './usuarios/entities/usuario.entity';
 import * as bcrypt from 'bcrypt';
 import { Empresa } from './empresas/entities/empresa.entity';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
+import { LoginDto } from './auth/dto/login.dto';
 
 @Controller()
 export class AppController {
@@ -21,22 +22,25 @@ export class AppController {
   }
 
   @Post('auth/login')
-  async login(@Body() credentials: { email: string; pass: string }) {
-    if (!credentials.email || !credentials.pass) {
+  async login(@Body() credentials: LoginDto) {
+    const email = credentials.email || credentials.correo;
+    const password = credentials.password || credentials.pass;
+
+    if (!email || !password) {
       throw new UnauthorizedException('Email y contraseña son requeridos');
     }
 
     const user = await this.dataSource.getRepository(Usuario)
       .createQueryBuilder('usuario')
       .addSelect('usuario.password')
-      .where('usuario.email = :email', { email: credentials.email })
+      .where('usuario.email = :email', { email })
       .getOne();
 
     if (!user || !user.password) {
       throw new UnauthorizedException('Credenciales inválidas');
     }
 
-    const isMatch = await bcrypt.compare(credentials.pass, user.password);
+    const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       throw new UnauthorizedException('Credenciales inválidas');
     }

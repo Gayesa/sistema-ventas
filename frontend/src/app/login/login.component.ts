@@ -29,7 +29,7 @@ export class LoginComponent {
     }
     
     this.loading = true;
-    this.authService.login({ email: emailTrimmed, pass: passTrimmed }).subscribe({
+    this.authService.login({ email: emailTrimmed, password: passTrimmed }).subscribe({
       next: (success) => {
         this.loading = false;
         if (!success) {

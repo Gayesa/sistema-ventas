@@ -36,7 +36,7 @@ export class AuthService {
     }
   }
 
-  login(credentials: { email: string, pass: string }): Observable<boolean> {
+  login(credentials: { email: string, password: string }): Observable<boolean> {
     // All authentication goes through the backend — no hardcoded credentials
     return this.http.post<any>(`${environment.apiUrl}/auth/login`, credentials).pipe(
       map(response => {

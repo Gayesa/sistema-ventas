@@ -49,19 +49,32 @@ export class SuperAdminService {
 
       const empresaGuardada = await queryRunner.manager.save(nuevaEmpresa);
 
-      // 3. Crear el usuario ADMIN_TIENDA
+      // 3. Crear o actualizar el usuario ADMIN_TIENDA (Upsert)
       const salt = await bcrypt.genSalt();
       const hashedPassword = await bcrypt.hash(createEmpresaDto.passwordPropietario, salt);
       
-      const nuevoUsuario = queryRunner.manager.create(Usuario, {
-        nombre: createEmpresaDto.nombrePropietario,
-        email: createEmpresaDto.emailPropietario,
-        password: hashedPassword,
-        rol: 'ADMIN_TIENDA',
-        empresa_id: empresaGuardada.id,
-      });
+      let usuario = await queryRunner.manager.findOne(Usuario, { where: { email: createEmpresaDto.emailPropietario } });
+      
+      if (usuario) {
+        // Actualizar usuario existente
+        usuario.nombre = createEmpresaDto.nombrePropietario;
+        usuario.password = hashedPassword;
+        usuario.rol = 'ADMIN_TIENDA';
+        usuario.empresa_id = empresaGuardada.id;
+        usuario.activo = true;
+      } else {
+        // Crear nuevo usuario
+        usuario = queryRunner.manager.create(Usuario, {
+          nombre: createEmpresaDto.nombrePropietario,
+          email: createEmpresaDto.emailPropietario,
+          password: hashedPassword,
+          rol: 'ADMIN_TIENDA',
+          empresa_id: empresaGuardada.id,
+          activo: true,
+        });
+      }
 
-      await queryRunner.manager.save(nuevoUsuario);
+      await queryRunner.manager.save(usuario);
 
       await queryRunner.commitTransaction();
 
@@ -191,14 +204,28 @@ export class SuperAdminService {
 
       await queryRunner.manager.save(empresa);
 
-      let adminQuery: any = { empresa_id: empresaId, rol: 'ADMIN_TIENDA' };
-      if (updateData.adminIdEditando) {
-        adminQuery.id = updateData.adminIdEditando;
+      let admin: Usuario | null = null;
+      
+      // Intentar buscar por email si viene en el payload
+      if (updateData.emailPropietario && updateData.emailPropietario.trim() !== '') {
+        admin = await queryRunner.manager.findOne(Usuario, { where: { email: updateData.emailPropietario.trim() } });
       }
-      const admin = await queryRunner.manager.findOne(Usuario, { where: adminQuery });
+      
+      // Si no se encontró por email, intentar buscar el admin actual de la empresa
+      if (!admin) {
+        let adminQuery: any = { empresa_id: empresaId, rol: 'ADMIN_TIENDA' };
+        if (updateData.adminIdEditando) {
+          adminQuery.id = updateData.adminIdEditando;
+        }
+        admin = await queryRunner.manager.findOne(Usuario, { where: adminQuery });
+      }
+
       if (admin) {
         if (updateData.nombrePropietario) admin.nombre = updateData.nombrePropietario;
-        if (updateData.emailPropietario) admin.email = updateData.emailPropietario;
+        if (updateData.emailPropietario) admin.email = updateData.emailPropietario.trim();
+        admin.empresa_id = empresaId;
+        admin.rol = 'ADMIN_TIENDA';
+        admin.activo = true;
 
         if (updateData.passwordPropietario && updateData.passwordPropietario.trim() !== '') {
           const salt = await bcrypt.genSalt();
@@ -218,6 +245,7 @@ export class SuperAdminService {
           password: hashedPassword,
           rol: 'ADMIN_TIENDA',
           empresa_id: empresaId,
+          activo: true,
         });
         await queryRunner.manager.save(nuevoAdmin);
       }
