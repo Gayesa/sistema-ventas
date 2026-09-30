@@ -105,7 +105,8 @@ export class ExportService {
         fillColor: [226, 232, 240], // Slate 200
         textColor: [15, 23, 42],
         fontStyle: 'bold',
-        halign: 'left'
+        halign: 'left',
+        valign: 'middle'
       },
       didParseCell: (dataArg) => {
         if (dataArg.section === 'body' && dataArg.row.raw) {
@@ -210,13 +211,12 @@ export class ExportService {
     doc.text('N° de pedido', 450, 180, { align: 'right' });
     doc.text('Fecha vencimiento', 450, 200, { align: 'right' });
 
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(15, 23, 42);
-    doc.text(new Date(compra.fecha_compra).toLocaleDateString(), 550, 160, { align: 'right' });
+    const fechaVisual = compra.fecha_formateada || (compra.fecha_compra ? (compra.fecha_compra.includes('T00:00:00') ? compra.fecha_compra.substring(0, 10).split('-').reverse().join('/') : new Date(compra.fecha_compra).toLocaleDateString()) : 'N/A');
+    doc.text(fechaVisual, 550, 160, { align: 'right' });
     doc.setFont('helvetica', 'bold');
     doc.text(numFactura, 550, 180, { align: 'right' });
     doc.setFont('helvetica', 'normal');
-    doc.text(new Date(compra.fecha_compra).toLocaleDateString(), 550, 200, { align: 'right' });
+    doc.text(fechaVisual, 550, 200, { align: 'right' });
 
     // --- TABLA DE ARTÍCULOS ---
     const columns = ['Cant.', 'Descripción', 'Precio unitario', 'Importe'];
@@ -538,13 +538,28 @@ export class ExportService {
     doc.text('COMPRAS (INGRESOS)', 90, startY);
 
     const columnsCompras = ['Factura', 'Fecha Entrada', 'Cantidad', 'V. Unitario', 'Total'];
-    const dataCompras = compras.map(c => [
+    const dataCompras: any[][] = compras.map(c => [
       c.factura,
-      new Date(c.fecha).toLocaleString(),
+      this.formatearFechaKardex(c.fecha),
       `+${c.cantidad}`,
       `$ ${Number(c.valor_unitario).toLocaleString('es-CO')}`,
       `$ ${Number(c.total).toLocaleString('es-CO')}`
     ]);
+
+    const totalCantCompras = compras.reduce((acc, c) => acc + Number(c.cantidad || 0), 0);
+    const totalValorCompras = compras.reduce((acc, c) => acc + Number(c.total || 0), 0);
+
+    if (compras.length > 0) {
+      dataCompras.push([
+        'TOTAL COMPRAS',
+        '',
+        `+${totalCantCompras}`,
+        '',
+        `$ ${totalValorCompras.toLocaleString('es-CO', { maximumFractionDigits: 0 })}`
+      ]);
+    } else {
+      dataCompras.push(['Sin ingresos registrados', '', '', '', '']);
+    }
 
     autoTable(doc, {
       head: [columnsCompras],
@@ -554,6 +569,21 @@ export class ExportService {
       theme: 'plain',
       styles: { font: 'helvetica', fontSize: 9, cellPadding: 8, textColor: [15, 23, 42] },
       headStyles: { fillColor: [226, 232, 240], textColor: [15, 23, 42], fontStyle: 'bold' },
+      didParseCell: (dataArg) => {
+        if (dataArg.section === 'body' && dataArg.row.raw) {
+          const rowData = dataArg.row.raw as any[];
+          const isTotalRow = rowData.some(cell => typeof cell === 'string' && cell.includes('TOTAL COMPRAS'));
+          if (isTotalRow) {
+            dataArg.cell.styles.fontStyle = 'bold';
+            dataArg.cell.styles.fillColor = [241, 245, 249];
+            if (dataArg.column.index === 2) {
+              dataArg.cell.styles.textColor = [5, 150, 105]; // emerald-600
+            } else if (dataArg.column.index === 4) {
+              dataArg.cell.styles.textColor = [4, 120, 87]; // emerald-700
+            }
+          }
+        }
+      },
       didDrawCell: (dataArg) => {
         doc.setDrawColor(203, 213, 225);
         doc.setLineWidth(0.5);
@@ -562,7 +592,12 @@ export class ExportService {
     });
 
     let lastY = (doc as any).lastAutoTable.finalY || startY + 20;
-    startY = lastY + 20;
+    if (lastY > pageHeight - 160) {
+      doc.addPage();
+      startY = 60;
+    } else {
+      startY = lastY + 25;
+    }
 
     // --- TABLA VENTAS (SALIDAS) ---
     doc.setFont('helvetica', 'bold');
@@ -570,14 +605,31 @@ export class ExportService {
     doc.setTextColor(15, 23, 42); // Slate 900
     doc.text('VENTAS (SALIDAS)', 90, startY);
 
-    const columnsVentas = ['Factura/Ticket', 'Fecha Salida', 'Cantidad', 'V. Venta U.', 'Total'];
-    const dataVentas = ventas.map(v => [
+    const columnsVentas = ['Factura/Ticket', 'Fecha Salida', 'Vendedor', 'Cantidad', 'V. Venta U.', 'Total'];
+    const dataVentas: any[][] = ventas.map(v => [
       v.factura,
-      new Date(v.fecha).toLocaleString(),
+      this.formatearFechaKardex(v.fecha),
+      v.vendedor || 'Vendedor',
       `-${v.cantidad}`,
       `$ ${Number(v.valor_unitario).toLocaleString('es-CO')}`,
       `$ ${Number(v.total).toLocaleString('es-CO')}`
     ]);
+
+    const totalCantVentas = ventas.reduce((acc, v) => acc + Number(v.cantidad || 0), 0);
+    const totalValorVentas = ventas.reduce((acc, v) => acc + Number(v.total || 0), 0);
+
+    if (ventas.length > 0) {
+      dataVentas.push([
+        'TOTAL VENTAS',
+        '',
+        '',
+        `-${totalCantVentas}`,
+        '',
+        `$ ${totalValorVentas.toLocaleString('es-CO', { maximumFractionDigits: 0 })}`
+      ]);
+    } else {
+      dataVentas.push(['Sin salidas registradas', '', '', '', '', '']);
+    }
 
     autoTable(doc, {
       head: [columnsVentas],
@@ -587,6 +639,21 @@ export class ExportService {
       theme: 'plain',
       styles: { font: 'helvetica', fontSize: 9, cellPadding: 8, textColor: [15, 23, 42] },
       headStyles: { fillColor: [226, 232, 240], textColor: [15, 23, 42], fontStyle: 'bold' },
+      didParseCell: (dataArg) => {
+        if (dataArg.section === 'body' && dataArg.row.raw) {
+          const rowData = dataArg.row.raw as any[];
+          const isTotalRow = rowData.some(cell => typeof cell === 'string' && cell.includes('TOTAL VENTAS'));
+          if (isTotalRow) {
+            dataArg.cell.styles.fontStyle = 'bold';
+            dataArg.cell.styles.fillColor = [241, 245, 249];
+            if (dataArg.column.index === 3) {
+              dataArg.cell.styles.textColor = [225, 29, 72]; // rose-600
+            } else if (dataArg.column.index === 5) {
+              dataArg.cell.styles.textColor = [67, 56, 202]; // indigo-700
+            }
+          }
+        }
+      },
       didDrawCell: (dataArg) => {
         doc.setDrawColor(203, 213, 225);
         doc.setLineWidth(0.5);
@@ -594,7 +661,11 @@ export class ExportService {
       }
     });
 
-    const finalY = (doc as any).lastAutoTable.finalY || startY + 50;
+    let finalY = (doc as any).lastAutoTable.finalY || startY + 50;
+    if (finalY > pageHeight - 160) {
+      doc.addPage();
+      finalY = 60;
+    }
 
     // --- FOOTER ---
     const bottomY = pageHeight - 60;
@@ -612,6 +683,21 @@ export class ExportService {
 
     // Guardar
     doc.save(`Kardex_${producto.sku}_${new Date().getTime()}.pdf`);
+  }
+
+  private formatearFechaKardex(fechaStr: any): string {
+    if (!fechaStr) return '';
+    const str = String(fechaStr);
+    if (str.includes('T00:00:00')) {
+      const soloFecha = str.substring(0, 10);
+      const partes = soloFecha.split('-');
+      if (partes.length === 3) {
+        return `${partes[2]}/${partes[1]}/${partes[0]}`;
+      }
+    }
+    const d = new Date(fechaStr);
+    if (isNaN(d.getTime())) return str;
+    return d.toLocaleString('es-CO');
   }
 
   // --- EXPORTAR CIERRE Z PDF ---
@@ -846,6 +932,310 @@ export class ExportService {
   }
 
   /**
+   * Exporta una factura / comprobante de venta individual a PDF con diseño premium
+   */
+  exportarFacturaVentaPDF(venta: any, clienteDatos?: any) {
+    if (!venta) return;
+
+    const doc = new jsPDF('p', 'pt', 'a4');
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+
+    const empresaNombre = localStorage.getItem('empresa_nombre') || 'Mi Empresa SaaS';
+    const adminNombre = venta.vendedor || localStorage.getItem('name') || 'Caja';
+
+    const numTicket = venta.numero_ticket || venta.ticket || 'TKT-001';
+    const cliente = clienteDatos || venta.cliente_datos || null;
+
+    // 1. Plantilla de Encabezado Corporativo
+    this.dibujarPlantillaEncabezado(doc, pageWidth, empresaNombre, 90, 45, 'Factura:', numTicket, 450, 350);
+
+    // 2. Información de Factura y Cliente
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(71, 85, 105);
+    doc.text('DATOS DEL CLIENTE', 90, 160);
+    doc.text('DETALLES DEL COMPROBANTE', 345, 160);
+
+    // Tarjeta Cliente (Izquierda)
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(1);
+    doc.roundedRect(90, 170, 245, 75, 6, 6, 'FD');
+
+    if (cliente) {
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(15, 23, 42);
+      doc.text(`${cliente.nombres || ''} ${cliente.apellidos || ''}`.trim() || 'Cliente Registrado', 105, 190, { maxWidth: 220 });
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(100, 116, 139);
+      doc.text(`C.C. / NIT: ${cliente.cedula || 'N/A'}`, 105, 205, { maxWidth: 220 });
+      doc.text(`Tel: ${cliente.telefono || 'Sin teléfono'}`, 105, 220, { maxWidth: 220 });
+      if (cliente.direccion) {
+        doc.text(`Dir: ${cliente.direccion}`, 105, 235, { maxWidth: 220 });
+      }
+    } else {
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(15, 23, 42);
+      doc.text('Consumidor Final (Cliente General)', 105, 190, { maxWidth: 220 });
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(100, 116, 139);
+      doc.text('C.C.: 222222222222', 105, 205, { maxWidth: 220 });
+      doc.text('Venta en mostrador sin identificación', 105, 220, { maxWidth: 220 });
+    }
+
+    // Tarjeta Comprobante (Derecha) - Ancho controlado para evitar desbordes
+    const cardDerX = 345;
+    const cardDerW = pageWidth - 45 - cardDerX;
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(1);
+    doc.roundedRect(cardDerX, 170, cardDerW, 75, 6, 6, 'FD');
+
+    const colValX = 422;
+    const maxValW = cardDerW - (colValX - cardDerX) - 8;
+
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 116, 139);
+    doc.text('Ticket N°:', cardDerX + 12, 190);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(15, 23, 42);
+    doc.text(numTicket, colValX, 190, { maxWidth: maxValW });
+
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 116, 139);
+    doc.text('Fecha:', cardDerX + 12, 205);
+    doc.setTextColor(15, 23, 42);
+    const fechaTexto = venta.fecha ? new Date(venta.fecha).toLocaleString('es-CO') : new Date().toLocaleString('es-CO');
+    doc.text(fechaTexto, colValX, 205, { maxWidth: maxValW });
+
+    doc.setTextColor(100, 116, 139);
+    doc.text('Método:', cardDerX + 12, 220);
+    doc.setTextColor(15, 23, 42);
+    let metodoLimpio = venta.metodo_pago || 'EFECTIVO';
+    if (metodoLimpio.toUpperCase().startsWith('MIXTO')) {
+      metodoLimpio = 'PAGO MIXTO';
+    }
+    doc.text(metodoLimpio, colValX, 220, { maxWidth: maxValW });
+
+    doc.setTextColor(100, 116, 139);
+    doc.text('Atendido por:', cardDerX + 12, 235);
+    doc.setTextColor(15, 23, 42);
+    doc.text(adminNombre, colValX, 235, { maxWidth: maxValW });
+
+    // 3. Tabla de Productos
+    const columns = ['Cant.', 'Descripción del Producto', 'Precio Unit.', 'Subtotal'];
+    const dataRows = (venta.detalles || []).map((d: any) => [
+      d.cantidad || 1,
+      d.nombre_producto || d.nombre || 'Producto',
+      `$ ${Number(d.precio_unitario || d.precio || 0).toLocaleString('es-CO', { maximumFractionDigits: 0 })}`,
+      `$ ${Number(d.subtotal || ((d.cantidad || 1) * (d.precio_unitario || d.precio || 0))).toLocaleString('es-CO', { maximumFractionDigits: 0 })}`
+    ]);
+
+    autoTable(doc, {
+      head: [columns],
+      body: dataRows,
+      startY: 265,
+      margin: { left: 90, right: 45 },
+      theme: 'plain',
+      styles: {
+        font: 'helvetica',
+        fontSize: 9,
+        cellPadding: 8,
+        textColor: [15, 23, 42]
+      },
+      headStyles: {
+        fillColor: [226, 232, 240],
+        textColor: [15, 23, 42],
+        fontStyle: 'bold',
+        halign: 'center'
+      },
+      columnStyles: {
+        0: { halign: 'center', cellWidth: 50 },
+        1: { halign: 'left' },
+        2: { halign: 'right', cellWidth: 90 },
+        3: { halign: 'right', cellWidth: 90 }
+      },
+      didDrawCell: (dataArg) => {
+        doc.setDrawColor(203, 213, 225);
+        doc.setLineWidth(0.5);
+        doc.rect(dataArg.cell.x, dataArg.cell.y, dataArg.cell.width, dataArg.cell.height);
+      }
+    });
+
+    const finalY = (doc as any).lastAutoTable.finalY || 265;
+
+    // 4. Totales y Liquidación Dinámica
+    const totalVenta = Number(venta.total || 0);
+    let currentY = finalY + 22;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9.5);
+    doc.setTextColor(100, 116, 139);
+    doc.text('Subtotal:', 380, currentY);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(15, 23, 42);
+    doc.text(`$ ${totalVenta.toLocaleString('es-CO')}`, pageWidth - 45, currentY, { align: 'right' });
+    currentY += 15;
+
+    // Extraer o procesar desglose de pagos
+    let pd = venta.pagos_detalle;
+    if (!pd && venta.metodo_pago && venta.metodo_pago.includes('(')) {
+      const match = venta.metodo_pago.match(/\((.*?)\)/);
+      if (match && match[1]) {
+        const parts = match[1].split(',').map((p: string) => p.trim());
+        const parsed: any = { tipo: 'MIXTO' };
+        parts.forEach((p: string) => {
+          const num = Number(p.replace(/[^0-9]/g, ''));
+          if (p.toLowerCase().includes('efectivo')) parsed.efectivo = num;
+          if (p.toLowerCase().includes('tarjeta')) parsed.tarjeta = num;
+          if (p.toLowerCase().includes('nequi')) parsed.nequi = num;
+        });
+        pd = parsed;
+      }
+    }
+
+    if (pd) {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+
+      if (pd.tipo === 'MIXTO') {
+        doc.setTextColor(100, 116, 139);
+        if (pd.efectivo > 0) {
+          doc.text('• Efectivo:', 385, currentY);
+          doc.text(`$ ${Number(pd.efectivo).toLocaleString('es-CO')}`, pageWidth - 45, currentY, { align: 'right' });
+          currentY += 13;
+        }
+        if (pd.tarjeta > 0) {
+          doc.text('• Tarjeta:', 385, currentY);
+          doc.text(`$ ${Number(pd.tarjeta).toLocaleString('es-CO')}`, pageWidth - 45, currentY, { align: 'right' });
+          currentY += 13;
+        }
+        if (pd.nequi > 0) {
+          doc.text('• Nequi / QR:', 385, currentY);
+          doc.text(`$ ${Number(pd.nequi).toLocaleString('es-CO')}`, pageWidth - 45, currentY, { align: 'right' });
+          currentY += 13;
+        }
+        if (pd.cambio > 0) {
+          doc.text('• Cambio (Vueltos):', 385, currentY);
+          doc.setTextColor(5, 150, 105);
+          doc.text(`$ ${Number(pd.cambio).toLocaleString('es-CO')}`, pageWidth - 45, currentY, { align: 'right' });
+          currentY += 13;
+        }
+      } else if (pd.dinero_recibido_efectivo > 0) {
+        doc.setTextColor(100, 116, 139);
+        doc.text('Dinero recibido:', 380, currentY);
+        doc.text(`$ ${Number(pd.dinero_recibido_efectivo).toLocaleString('es-CO')}`, pageWidth - 45, currentY, { align: 'right' });
+        currentY += 13;
+        if (pd.cambio > 0) {
+          doc.text('Cambio (Vueltos):', 380, currentY);
+          doc.setTextColor(5, 150, 105);
+          doc.text(`$ ${Number(pd.cambio).toLocaleString('es-CO')}`, pageWidth - 45, currentY, { align: 'right' });
+          currentY += 13;
+        }
+      }
+    }
+
+    // Gran Total (Posicionado dinámicamente con margen respecto a currentY)
+    const boxTotalY = currentY + 8;
+    const boxTotalHeight = 34;
+
+    doc.setFillColor(241, 245, 249);
+    doc.setDrawColor(203, 213, 225);
+    doc.roundedRect(360, boxTotalY, pageWidth - 45 - 360, boxTotalHeight, 6, 6, 'FD');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.setTextColor(15, 23, 42);
+    doc.text('TOTAL:', 375, boxTotalY + 22);
+
+    doc.setFontSize(13);
+    doc.setTextColor(79, 70, 229);
+    doc.text(`$ ${totalVenta.toLocaleString('es-CO')}`, pageWidth - 55, boxTotalY + 22, { align: 'right' });
+
+    // Mensaje de Agradecimiento (alineado con la altura del total)
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(5, 150, 105);
+    doc.text('¡Gracias por su compra!', 90, boxTotalY + 14);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(100, 116, 139);
+    doc.text('Conserve este comprobante para cualquier cambio o garantía.', 90, boxTotalY + 28);
+
+    // Footer
+    const bottomY = pageHeight - 50;
+    doc.setDrawColor(203, 213, 225);
+    doc.setLineWidth(1);
+    doc.line(90, bottomY, pageWidth - 45, bottomY);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(148, 163, 184);
+    doc.text('Documento equivalente a factura - Sistema POS', 90, bottomY + 18);
+    doc.text(`Impreso por ${adminNombre}`, pageWidth - 45, bottomY + 18, { align: 'right' });
+
+    doc.save(`Factura_${numTicket}.pdf`);
+  }
+
+  /**
+   * Genera el enlace de WhatsApp para enviar la factura y el agradecimiento al cliente
+   */
+  generarEnlaceWhatsAppVenta(venta: any, cliente: any): { url: string | null; telefono: string | null; mensaje: string } {
+    if (!cliente || !cliente.telefono) {
+      return { url: null, telefono: null, mensaje: '' };
+    }
+
+    const empresaNombre = localStorage.getItem('empresa_nombre') || 'Nuestra Tienda';
+    const numTicket = venta.numero_ticket || venta.ticket || 'TKT';
+    const total = Number(venta.total || 0).toLocaleString('es-CO');
+    const metodo = venta.metodo_pago || 'Efectivo';
+
+    // Lista de productos
+    let listaProds = '';
+    if (venta.detalles && venta.detalles.length > 0) {
+      listaProds = venta.detalles.map((d: any) => {
+        const cant = d.cantidad || 1;
+        const nom = d.nombre_producto || d.nombre || 'Producto';
+        const sub = Number(d.subtotal || ((d.precio_unitario || d.precio || 0) * cant)).toLocaleString('es-CO');
+        return `• ${cant}x ${nom} - $${sub}`;
+      }).join('\n');
+    }
+
+    const mensaje = 
+`🧾 *COMPROBANTE DE COMPRA*
+¡Hola, *${cliente.nombres} ${cliente.apellidos}*! 👋
+
+Muchas gracias por su compra en *${empresaNombre}*. ❤️
+
+📌 *Ticket:* #${numTicket}
+💳 *Método de Pago:* ${metodo}
+
+🛒 *DETALLE:*
+${listaProds}
+
+💰 *TOTAL PAGADO: $${total}*
+
+✨ *¡Gracias por su preferencia! Esperamos servirle nuevamente pronto.*`;
+
+    // Limpiar número telefónico
+    let tel = String(cliente.telefono).replace(/\D/g, '');
+    if (tel.length === 10 && tel.startsWith('3')) {
+      tel = '57' + tel; // Código país Colombia por defecto
+    }
+
+    const url = `https://api.whatsapp.com/send?phone=${tel}&text=${encodeURIComponent(mensaje)}`;
+    return { url, telefono: tel, mensaje };
+  }
+
+  /**
    * Dibuja la plantilla estándar de encabezado corporativo para todos los PDFs.
    * Centraliza logo, nombres, y líneas base.
    */
@@ -867,6 +1257,13 @@ export class ExportService {
     doc.text(textoVerticalAbajo, 45, yRotadoAbajo, { angle: 90 });
     
     doc.setTextColor(71, 85, 105); // Slate 600
+    if (textoVerticalArriba && textoVerticalArriba.length > 14) {
+      doc.setFontSize(15);
+    } else if (textoVerticalArriba && textoVerticalArriba.length > 10) {
+      doc.setFontSize(18);
+    } else {
+      doc.setFontSize(22);
+    }
     doc.text(textoVerticalArriba, 45, yRotadoArriba, { angle: 90 });
 
     // --- HEADER ---

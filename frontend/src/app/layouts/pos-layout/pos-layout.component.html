@@ -6,6 +6,21 @@
       <span class="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full font-medium">Ticket #0042</span>
     </div>
 
+    <!-- Indicador de Cliente Asignado en Barra Lateral -->
+    <div class="px-4 py-2 bg-white border-b border-slate-100 flex items-center justify-between text-xs">
+      <div class="flex items-center gap-1.5 min-w-0">
+        <svg class="w-3.5 h-3.5 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+        <span *ngIf="!clienteSeleccionado" class="text-slate-400 font-medium truncate">Consumidor Final</span>
+        <span *ngIf="clienteSeleccionado" class="text-emerald-700 font-bold truncate">
+          {{ clienteSeleccionado.nombres }} {{ clienteSeleccionado.apellidos }}
+        </span>
+      </div>
+      <div class="flex items-center gap-1 shrink-0">
+        <button *ngIf="clienteSeleccionado" (click)="quitarCliente()" class="text-[11px] text-rose-500 hover:underline font-semibold cursor-pointer" title="Quitar cliente">Quitar</button>
+        <button *ngIf="!clienteSeleccionado" (click)="abrirModalCobro()" class="text-[11px] text-indigo-600 hover:underline font-bold cursor-pointer" title="Asignar cliente">Asignar</button>
+      </div>
+    </div>
+
     <!-- Saldo a Favor Global (Alerta de Carrito) -->
     <div *ngIf="saldoAFavorTotalGlobal > 0" class="m-4 mb-0 bg-emerald-50 border border-emerald-200 rounded-xl p-4 shadow-sm relative overflow-hidden group">
       <!-- Decoración de fondo -->
@@ -124,127 +139,526 @@
 </div>
 
 <!-- Modal de Cobro ( Checkout ) -->
-<div *ngIf="modalCobroVisible" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm animate-fade-in-up">
-  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[95vh] overflow-hidden flex flex-col">
+<div *ngIf="modalCobroVisible" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm animate-fade-in-up p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[92vh] overflow-hidden flex flex-col border border-slate-100">
     
     <!-- Modal Header -->
-    <div class="px-6 py-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
-      <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2">
-        <svg class="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
-        Procesar Pago
-      </h2>
-      <button (click)="cerrarModalCobro()" [disabled]="ventaProcesadaExito" class="text-slate-400 hover:text-slate-600 bg-slate-200 hover:bg-slate-300 rounded-full p-1.5 transition-colors disabled:opacity-50">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-      </button>
+    <div class="px-6 py-4 bg-slate-900 text-white flex justify-between items-center shadow-sm">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 border border-indigo-400/30 flex items-center justify-center">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
+        </div>
+        <div>
+          <h2 class="text-lg font-bold text-white tracking-tight">Procesar Cobro de Venta</h2>
+          <p class="text-xs text-slate-400">Selecciona el método de pago o combina varios medios</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="hidden sm:inline-block bg-slate-800 text-emerald-400 text-sm font-black px-3.5 py-1.5 rounded-xl border border-slate-700 font-mono">
+          Total: {{ totalAPagarFinal | currency:'COP':'symbol':'1.0-0' }}
+        </span>
+        <button (click)="cerrarModalCobro()" [disabled]="ventaProcesadaExito" class="text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-full p-2 transition-colors disabled:opacity-50">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
     </div>
 
-    <div *ngIf="!ventaProcesadaExito" class="p-6 flex flex-col md:flex-row gap-8 overflow-y-auto">
-      <!-- Izquierda: Métodos de pago -->
-      <div class="flex-1 space-y-4">
-        <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-2">Método de Pago</h3>
-        
-        <div class="grid grid-cols-2 gap-3">
-          <!-- Efectivo -->
-          <button (click)="seleccionarMetodo('EFECTIVO')" [class.ring-2]="metodoPagoSeleccionado === 'EFECTIVO'" [class.ring-primary]="metodoPagoSeleccionado === 'EFECTIVO'" [class.bg-indigo-50]="metodoPagoSeleccionado === 'EFECTIVO'" [class.border-transparent]="metodoPagoSeleccionado === 'EFECTIVO'" class="border border-slate-200 rounded-xl p-4 flex flex-col items-center gap-2 hover:bg-slate-50 transition-all">
-            <svg class="w-8 h-8 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
-            <span class="font-bold text-slate-700">Efectivo</span>
-          </button>
-          
-          <!-- Tarjeta -->
-          <button (click)="seleccionarMetodo('TARJETA')" [class.ring-2]="metodoPagoSeleccionado === 'TARJETA'" [class.ring-primary]="metodoPagoSeleccionado === 'TARJETA'" [class.bg-indigo-50]="metodoPagoSeleccionado === 'TARJETA'" [class.border-transparent]="metodoPagoSeleccionado === 'TARJETA'" class="border border-slate-200 rounded-xl p-4 flex flex-col items-center gap-2 hover:bg-slate-50 transition-all">
-            <svg class="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
-            <span class="font-bold text-slate-700">Tarjeta (Datafono)</span>
-          </button>
+    <!-- Modal Content -->
+    <div *ngIf="!ventaProcesadaExito" class="p-6 flex flex-col md:flex-row gap-6 overflow-y-auto max-h-[75vh]">
+      
+      <!-- Izquierda: Métodos de pago y montos -->
+      <div class="flex-1 space-y-5">
 
-          <!-- Nequi / QR -->
-          <button (click)="seleccionarMetodo('NEQUI')" [class.ring-2]="metodoPagoSeleccionado === 'NEQUI'" [class.ring-primary]="metodoPagoSeleccionado === 'NEQUI'" [class.bg-indigo-50]="metodoPagoSeleccionado === 'NEQUI'" [class.border-transparent]="metodoPagoSeleccionado === 'NEQUI'" class="border border-slate-200 rounded-xl p-4 flex flex-col items-center gap-2 hover:bg-slate-50 transition-all col-span-2">
-            <svg class="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
-            <span class="font-bold text-slate-700">Transferencia / Nequi / QR</span>
-          </button>
+        <!-- Búsqueda y Asignación de Cliente por Cédula -->
+        <div class="bg-slate-50/90 border border-slate-200 rounded-2xl p-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <label class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+              <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+              Cliente de la Venta (Opcional)
+            </label>
+            <span *ngIf="!clienteSeleccionado" class="text-[11px] font-medium text-slate-400 bg-slate-200/70 px-2 py-0.5 rounded-md">
+              Por defecto: Consumidor Final
+            </span>
+            <span *ngIf="clienteSeleccionado" class="text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Cliente Asignado
+            </span>
+          </div>
+
+          <!-- Si NO hay cliente seleccionado -->
+          <div *ngIf="!clienteSeleccionado" class="flex gap-2">
+            <div class="relative flex-1">
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+              </div>
+              <input type="text" [(ngModel)]="busquedaClienteCedula" (keydown.enter)="$event.preventDefault(); buscarClientePorCedula()"
+                     placeholder="Buscar por cédula del cliente (Enter o clic en Buscar)..."
+                     class="w-full pl-9 pr-8 py-2 bg-white border border-slate-300 rounded-xl text-xs font-medium text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all shadow-2xs">
+              <button *ngIf="busquedaClienteCedula" type="button" (click)="busquedaClienteCedula = ''; mensajeBusquedaCliente = null" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 font-bold text-xs cursor-pointer">
+                ✕
+              </button>
+            </div>
+            <button type="button" (click)="buscarClientePorCedula()" [disabled]="buscandoCliente"
+                    class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1.5 shadow-xs cursor-pointer min-w-[90px]">
+              <span *ngIf="buscandoCliente" class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+              <span>{{ buscandoCliente ? 'Buscando...' : 'Buscar' }}</span>
+            </button>
+          </div>
+
+          <!-- Si HAY cliente seleccionado -->
+          <div *ngIf="clienteSeleccionado" class="bg-white border border-emerald-200 rounded-xl p-3 flex items-center justify-between shadow-2xs">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs shrink-0">
+                {{ clienteSeleccionado.nombres.charAt(0) }}{{ clienteSeleccionado.apellidos.charAt(0) }}
+              </div>
+              <div>
+                <p class="text-xs font-bold text-slate-900 leading-tight">{{ clienteSeleccionado.nombres }} {{ clienteSeleccionado.apellidos }}</p>
+                <div class="flex flex-wrap items-center gap-2 mt-1 text-[11px] text-slate-500 font-medium">
+                  <span class="bg-slate-100 px-2 py-0.5 rounded font-mono font-bold text-slate-700 border border-slate-200">
+                    C.C. {{ clienteSeleccionado.cedula }}
+                  </span>
+                  <span *ngIf="clienteSeleccionado.telefono" class="flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
+                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z"/></svg>
+                    {{ clienteSeleccionado.telefono }}
+                  </span>
+                  <span *ngIf="!clienteSeleccionado.telefono" class="text-slate-400 italic text-[11px]">(Sin teléfono)</span>
+                  <span *ngIf="clienteSeleccionado.direccion" class="text-slate-400 truncate max-w-[180px]">{{ clienteSeleccionado.direccion }}</span>
+                </div>
+              </div>
+            </div>
+            <button type="button" (click)="quitarCliente()" class="text-xs text-rose-500 hover:text-rose-700 hover:bg-rose-50 px-2.5 py-1.5 rounded-lg font-bold transition-colors cursor-pointer" title="Desvincular cliente">
+              Cambiar
+            </button>
+          </div>
+
+          <!-- Feedback de búsqueda -->
+          <div *ngIf="mensajeBusquedaCliente" class="p-2.5 rounded-xl text-xs font-medium flex items-center justify-between"
+               [ngClass]="{
+                 'bg-emerald-50 text-emerald-800 border border-emerald-200': tipoMensajeCliente === 'success',
+                 'bg-amber-50 text-amber-800 border border-amber-200': tipoMensajeCliente === 'warning',
+                 'bg-rose-50 text-rose-800 border border-rose-200': tipoMensajeCliente === 'error'
+               }">
+            <span>{{ mensajeBusquedaCliente }}</span>
+            <button type="button" (click)="mensajeBusquedaCliente = null" class="text-slate-400 hover:text-slate-600 ml-2 font-bold cursor-pointer">×</button>
+          </div>
+        </div>
+
+        <div>
+          <label class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">1. Modalidad de Pago</label>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            
+            <!-- Efectivo -->
+            <button type="button" (click)="seleccionarMetodo('EFECTIVO')"
+                    [class.border-emerald-500]="metodoPagoSeleccionado === 'EFECTIVO'"
+                    [class.bg-emerald-50]="metodoPagoSeleccionado === 'EFECTIVO'"
+                    [class.ring-2]="metodoPagoSeleccionado === 'EFECTIVO'"
+                    [class.ring-emerald-500]="metodoPagoSeleccionado === 'EFECTIVO'"
+                    class="border border-slate-200 rounded-xl p-3 flex flex-col items-center gap-1.5 hover:bg-slate-50 transition-all text-center group cursor-pointer">
+              <div class="w-9 h-9 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center transition-transform group-hover:scale-110">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+              </div>
+              <span class="font-bold text-xs text-slate-700">Efectivo</span>
+            </button>
+            
+            <!-- Tarjeta -->
+            <button type="button" (click)="seleccionarMetodo('TARJETA')"
+                    [class.border-blue-500]="metodoPagoSeleccionado === 'TARJETA'"
+                    [class.bg-blue-50]="metodoPagoSeleccionado === 'TARJETA'"
+                    [class.ring-2]="metodoPagoSeleccionado === 'TARJETA'"
+                    [class.ring-blue-500]="metodoPagoSeleccionado === 'TARJETA'"
+                    class="border border-slate-200 rounded-xl p-3 flex flex-col items-center gap-1.5 hover:bg-slate-50 transition-all text-center group cursor-pointer">
+              <div class="w-9 h-9 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center transition-transform group-hover:scale-110">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
+              </div>
+              <span class="font-bold text-xs text-slate-700">Tarjeta</span>
+            </button>
+
+            <!-- Nequi / QR -->
+            <button type="button" (click)="seleccionarMetodo('NEQUI')"
+                    [class.border-purple-500]="metodoPagoSeleccionado === 'NEQUI'"
+                    [class.bg-purple-50]="metodoPagoSeleccionado === 'NEQUI'"
+                    [class.ring-2]="metodoPagoSeleccionado === 'NEQUI'"
+                    [class.ring-purple-500]="metodoPagoSeleccionado === 'NEQUI'"
+                    class="border border-slate-200 rounded-xl p-3 flex flex-col items-center gap-1.5 hover:bg-slate-50 transition-all text-center group cursor-pointer">
+              <div class="w-9 h-9 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center transition-transform group-hover:scale-110">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
+              </div>
+              <span class="font-bold text-xs text-slate-700">Nequi / QR</span>
+            </button>
+
+            <!-- Pago Mixto / Combinado -->
+            <button type="button" (click)="seleccionarMetodo('MIXTO')"
+                    [class.border-amber-500]="metodoPagoSeleccionado === 'MIXTO'"
+                    [class.bg-amber-50]="metodoPagoSeleccionado === 'MIXTO'"
+                    [class.ring-2]="metodoPagoSeleccionado === 'MIXTO'"
+                    [class.ring-amber-500]="metodoPagoSeleccionado === 'MIXTO'"
+                    class="border border-slate-200 rounded-xl p-3 flex flex-col items-center gap-1.5 hover:bg-slate-50 transition-all text-center group relative cursor-pointer">
+              <span class="absolute -top-2 right-1 bg-amber-500 text-white text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full shadow-xs">Combinado</span>
+              <div class="w-9 h-9 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center transition-transform group-hover:scale-110">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
+              </div>
+              <span class="font-bold text-xs text-slate-800">Pago Mixto</span>
+            </button>
+
+          </div>
+        </div>
+
+        <!-- CASO 1: PAGO MIXTO (COMBINADO DE MULTIPLES MEDIOS) -->
+        <div *ngIf="metodoPagoSeleccionado === 'MIXTO'" class="bg-amber-500/5 border border-amber-200 rounded-2xl p-4.5 space-y-4">
+          <div class="flex items-center justify-between border-b border-amber-200/80 pb-2.5">
+            <div>
+              <h4 class="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                Distribución de Montos por Método
+              </h4>
+              <p class="text-[11px] text-slate-500">Asigna la cantidad a cobrar por cada medio hasta cubrir el 100% de la venta.</p>
+            </div>
+            <button type="button" (click)="limpiarMontosMixtos()" class="text-xs text-slate-500 hover:text-rose-600 font-semibold underline transition-colors cursor-pointer">
+              Reiniciar
+            </button>
+          </div>
+
+          <!-- Campos de asignación de monto -->
+          <div class="space-y-3">
+            
+            <!-- Fila 1: Efectivo en Mixto -->
+            <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs space-y-2">
+              <div class="flex items-center justify-between gap-3">
+                <div class="flex items-center gap-2 min-w-32">
+                  <div class="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold text-xs">💵</div>
+                  <span class="text-xs font-bold text-slate-700">Efectivo</span>
+                </div>
+                <div class="flex-1 max-w-xs relative">
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">$</span>
+                  <input type="number" [(ngModel)]="montoEfectivo" placeholder="0" min="0"
+                         class="w-full pl-7 pr-3 py-1.5 text-right font-bold text-slate-800 bg-slate-50 focus:bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+                </div>
+                <button type="button" (click)="asignarRestante('EFECTIVO')" [disabled]="faltanteMixto <= 0"
+                        class="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 disabled:opacity-40 disabled:cursor-not-allowed text-emerald-700 text-xs font-bold rounded-lg border border-emerald-200 transition-colors whitespace-nowrap cursor-pointer">
+                  + Restante
+                </button>
+              </div>
+
+              <!-- Si se cobra algo en efectivo dentro del pago mixto, permitir calcular el cambio -->
+              <div *ngIf="montoEfectivo > 0" class="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs bg-emerald-50/50 p-2 rounded-lg">
+                <div class="flex items-center gap-2">
+                  <span class="text-slate-600 font-medium">Billete recibido:</span>
+                  <input type="number" [(ngModel)]="dineroRecibidoEfectivoMixto" [placeholder]="montoEfectivo" min="0"
+                         class="w-28 px-2 py-1 text-right font-bold text-slate-800 bg-white border border-emerald-300 rounded text-xs outline-none">
+                </div>
+                <div class="font-bold">
+                  <span class="text-slate-500">Cambio:</span>
+                  <span class="text-emerald-700 ml-1 font-black">{{ cambioEfectivoMixto | currency:'COP':'symbol':'1.0-0' }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Fila 2: Tarjeta en Mixto -->
+            <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs flex items-center justify-between gap-3">
+              <div class="flex items-center gap-2 min-w-32">
+                <div class="w-7 h-7 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs">💳</div>
+                <span class="text-xs font-bold text-slate-700">Tarjeta (Datafono)</span>
+              </div>
+              <div class="flex-1 max-w-xs relative">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">$</span>
+                <input type="number" [(ngModel)]="montoTarjeta" placeholder="0" min="0"
+                       class="w-full pl-7 pr-3 py-1.5 text-right font-bold text-slate-800 bg-slate-50 focus:bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+              </div>
+              <button type="button" (click)="asignarRestante('TARJETA')" [disabled]="faltanteMixto <= 0"
+                      class="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 disabled:opacity-40 disabled:cursor-not-allowed text-blue-700 text-xs font-bold rounded-lg border border-blue-200 transition-colors whitespace-nowrap cursor-pointer">
+                + Restante
+              </button>
+            </div>
+
+            <!-- Fila 3: Nequi / QR en Mixto -->
+            <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs flex items-center justify-between gap-3">
+              <div class="flex items-center gap-2 min-w-32">
+                <div class="w-7 h-7 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center font-bold text-xs">📱</div>
+                <span class="text-xs font-bold text-slate-700">Nequi / QR / Transf.</span>
+              </div>
+              <div class="flex-1 max-w-xs relative">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">$</span>
+                <input type="number" [(ngModel)]="montoNequi" placeholder="0" min="0"
+                       class="w-full pl-7 pr-3 py-1.5 text-right font-bold text-slate-800 bg-slate-50 focus:bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 outline-none">
+              </div>
+              <button type="button" (click)="asignarRestante('NEQUI')" [disabled]="faltanteMixto <= 0"
+                      class="px-2.5 py-1.5 bg-purple-50 hover:bg-purple-100 disabled:opacity-40 disabled:cursor-not-allowed text-purple-700 text-xs font-bold rounded-lg border border-purple-200 transition-colors whitespace-nowrap cursor-pointer">
+                + Restante
+              </button>
+            </div>
+
+          </div>
+
+          <!-- Banner de Balance y Estado en Tiempo Real -->
+          <div class="p-3 rounded-xl border flex items-center justify-between gap-3 text-xs"
+               [ngClass]="{
+                 'bg-emerald-100/70 border-emerald-300 text-emerald-800 font-bold': faltanteMixto === 0 && totalPagadoMixto === totalAPagarFinal,
+                 'bg-amber-100/70 border-amber-300 text-amber-900': faltanteMixto > 0,
+                 'bg-rose-100/70 border-rose-300 text-rose-900': excedenteMixto > 0
+               }">
+            <div class="flex items-center gap-2">
+              <svg *ngIf="faltanteMixto === 0 && totalPagadoMixto === totalAPagarFinal" class="w-5 h-5 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+              <svg *ngIf="faltanteMixto > 0" class="w-5 h-5 text-amber-600 shrink-0 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+              <svg *ngIf="excedenteMixto > 0" class="w-5 h-5 text-rose-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+              <div>
+                <p *ngIf="faltanteMixto === 0 && totalPagadoMixto === totalAPagarFinal" class="font-black text-emerald-800">
+                  ¡Cuenta completada al 100%! Listo para confirmar.
+                </p>
+                <p *ngIf="faltanteMixto > 0" class="font-medium">
+                  Pendiente por asignar: <strong class="font-black text-amber-900">{{ faltanteMixto | currency:'COP':'symbol':'1.0-0' }}</strong>
+                </p>
+                <p *ngIf="excedenteMixto > 0" class="font-medium">
+                  La suma excede el total por: <strong class="font-black text-rose-900">{{ excedenteMixto | currency:'COP':'symbol':'1.0-0' }}</strong>
+                </p>
+              </div>
+            </div>
+            <div class="text-right shrink-0">
+              <span class="text-[11px] text-slate-500 block">Total Asignado:</span>
+              <span class="font-black text-sm">{{ totalPagadoMixto | currency:'COP':'symbol':'1.0-0' }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- CASO 2: PAGO SIMPLE EN EFECTIVO -->
+        <div *ngIf="metodoPagoSeleccionado === 'EFECTIVO'" class="bg-slate-50 border border-slate-200 rounded-2xl p-4.5 space-y-3">
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">Dinero Recibido del Cliente</label>
+          <div class="relative">
+            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xl">$</span>
+            <input type="number" [(ngModel)]="dineroRecibido" min="0"
+                   class="w-full pl-10 pr-4 py-3 bg-white border border-slate-300 rounded-xl text-2xl font-black text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-right outline-none">
+          </div>
+          
+          <!-- Botones de billetes rápidos -->
+          <div class="flex flex-wrap gap-2 pt-1">
+            <button type="button" (click)="establecerEfectivoRapido(totalAPagarFinal)"
+                    class="px-2.5 py-1 text-xs font-bold rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer">
+              Monto Exacto ({{ totalAPagarFinal | currency:'COP':'symbol':'1.0-0' }})
+            </button>
+            <button type="button" (click)="establecerEfectivoRapido(10000)" *ngIf="totalAPagarFinal <= 10000"
+                    class="px-2.5 py-1 text-xs font-bold rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer">
+              $10.000
+            </button>
+            <button type="button" (click)="establecerEfectivoRapido(20000)" *ngIf="totalAPagarFinal <= 20000"
+                    class="px-2.5 py-1 text-xs font-bold rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer">
+              $20.000
+            </button>
+            <button type="button" (click)="establecerEfectivoRapido(50000)" *ngIf="totalAPagarFinal <= 50000"
+                    class="px-2.5 py-1 text-xs font-bold rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer">
+              $50.000
+            </button>
+            <button type="button" (click)="establecerEfectivoRapido(100000)"
+                    class="px-2.5 py-1 text-xs font-bold rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer">
+              $100.000
+            </button>
+          </div>
+        </div>
+
+        <!-- CASO 3: PAGO SIMPLE CON TARJETA O NEQUI -->
+        <div *ngIf="metodoPagoSeleccionado === 'TARJETA' || metodoPagoSeleccionado === 'NEQUI'" class="bg-indigo-50/50 border border-indigo-100 rounded-2xl p-4.5 flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          </div>
+          <div>
+            <p class="text-xs font-bold text-slate-800">
+              Pago 100% digital por {{ metodoPagoSeleccionado === 'TARJETA' ? 'Tarjeta (Datafono)' : 'Nequi / Transferencia QR' }}
+            </p>
+            <p class="text-[11px] text-slate-500 mt-0.5">El valor exacto de {{ totalAPagarFinal | currency:'COP':'symbol':'1.0-0' }} debe ser aprobado en el datafono o validado con el comprobante.</p>
+          </div>
         </div>
 
         <!-- Alerta de Saldo a Favor -->
-        <div *ngIf="saldoAFavorTotal > 0" class="mt-4 border border-emerald-200 bg-emerald-50 rounded-xl p-4 flex items-center justify-between shadow-sm">
+        <div *ngIf="saldoAFavorTotal > 0" class="border border-emerald-200 bg-emerald-50 rounded-xl p-3.5 flex items-center justify-between shadow-2xs">
           <div>
-            <p class="text-sm font-black text-emerald-800">Saldo a Favor Disponible</p>
-            <p class="text-xs text-emerald-600 mt-1 font-medium">Puedes aplicarlo a esta venta.</p>
+            <p class="text-xs font-black text-emerald-800">Saldo a Favor del Cliente</p>
+            <p class="text-[11px] text-emerald-600 font-medium">Disponible: {{ saldoAFavorTotal | currency:'COP':'symbol':'1.0-0' }}</p>
           </div>
-          <div class="flex items-center gap-4">
-            <span class="font-black text-lg text-emerald-700">{{ saldoAFavorTotal | currency:'COP':'symbol':'1.0-0' }}</span>
+          <div class="flex items-center gap-3">
+            <span class="text-xs font-bold text-emerald-700">Aplicar a venta</span>
             <label class="relative inline-flex items-center cursor-pointer">
               <input type="checkbox" [checked]="usarSaldoAFavor" (change)="toggleSaldoAFavor()" class="sr-only peer">
-              <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+              <div class="w-10 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
             </label>
           </div>
         </div>
 
       </div>
 
-      <!-- Derecha: Resumen numérico -->
-      <div class="w-full md:w-72 bg-slate-50 rounded-xl p-5 border border-slate-100 flex flex-col">
-        <p class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-4">Resumen de Venta</p>
-        
-        <div class="flex flex-col gap-2 mb-2">
-          <div *ngIf="usarSaldoAFavor" class="flex justify-between items-center pb-2 border-b border-slate-200 line-through opacity-60">
-            <span class="text-sm font-medium text-slate-500">Subtotal original</span>
-            <span class="text-sm font-bold text-slate-800">{{ cartService.calcularTotal() | currency:'COP':'symbol':'1.0-0' }}</span>
+      <!-- Derecha: Resumen de Venta y Liquidación de Cambio -->
+      <div class="w-full md:w-80 bg-slate-50 rounded-2xl p-5 border border-slate-200/80 flex flex-col justify-between shadow-2xs">
+        <div>
+          <div class="flex items-center justify-between border-b border-slate-200 pb-3 mb-4">
+            <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Resumen de Cobro</span>
+            <span class="text-xs bg-slate-200 text-slate-700 font-bold px-2 py-0.5 rounded-full">
+              {{ cartService.contarArticulos() }} art.
+            </span>
           </div>
           
-          <div *ngIf="usarSaldoAFavor" class="flex justify-between items-center pb-2 border-b border-slate-200 text-emerald-600">
-            <span class="text-sm font-bold">Saldo a favor aplicado</span>
-            <span class="text-sm font-bold">- {{ (cartService.calcularTotal() - totalAPagarFinal) | currency:'COP':'symbol':'1.0-0' }}</span>
+          <div class="space-y-2.5 mb-5">
+            <div *ngIf="usarSaldoAFavor" class="flex justify-between items-center text-xs text-slate-400 line-through">
+              <span>Subtotal cuenta:</span>
+              <span class="font-bold">{{ cartService.calcularTotal() | currency:'COP':'symbol':'1.0-0' }}</span>
+            </div>
+            
+            <div *ngIf="usarSaldoAFavor" class="flex justify-between items-center text-xs text-emerald-600 font-bold">
+              <span>Saldo a favor aplicado:</span>
+              <span>- {{ (cartService.calcularTotal() - totalAPagarFinal) | currency:'COP':'symbol':'1.0-0' }}</span>
+            </div>
+
+            <div class="flex justify-between items-baseline pt-1">
+              <span class="text-slate-600 font-black uppercase tracking-wider text-xs">Total a Pagar</span>
+              <span class="text-3xl font-black text-slate-900 font-mono">{{ totalAPagarFinal | currency:'COP':'symbol':'1.0-0' }}</span>
+            </div>
           </div>
 
-          <div class="flex justify-between items-center">
-            <span class="text-slate-600 font-bold uppercase tracking-wider text-xs">Total a Pagar</span>
-            <span class="text-2xl font-black text-primary">{{ totalAPagarFinal | currency:'COP':'symbol':'1.0-0' }}</span>
+          <!-- Desglose de medios que se aplican -->
+          <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs space-y-2 mb-4">
+            <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block border-b border-slate-100 pb-1">Desglose del Pago</span>
+            
+            <div *ngIf="metodoPagoSeleccionado === 'EFECTIVO' || (metodoPagoSeleccionado === 'MIXTO' && montoEfectivo > 0)" class="flex justify-between items-center text-xs">
+              <span class="text-slate-600 flex items-center gap-1.5">💵 Efectivo:</span>
+              <span class="font-bold text-slate-800">
+                {{ (metodoPagoSeleccionado === 'MIXTO' ? montoEfectivo : totalAPagarFinal) | currency:'COP':'symbol':'1.0-0' }}
+              </span>
+            </div>
+
+            <div *ngIf="metodoPagoSeleccionado === 'TARJETA' || (metodoPagoSeleccionado === 'MIXTO' && montoTarjeta > 0)" class="flex justify-between items-center text-xs">
+              <span class="text-slate-600 flex items-center gap-1.5">💳 Tarjeta:</span>
+              <span class="font-bold text-slate-800">
+                {{ (metodoPagoSeleccionado === 'MIXTO' ? montoTarjeta : totalAPagarFinal) | currency:'COP':'symbol':'1.0-0' }}
+              </span>
+            </div>
+
+            <div *ngIf="metodoPagoSeleccionado === 'NEQUI' || (metodoPagoSeleccionado === 'MIXTO' && montoNequi > 0)" class="flex justify-between items-center text-xs">
+              <span class="text-slate-600 flex items-center gap-1.5">📱 Nequi / QR:</span>
+              <span class="font-bold text-slate-800">
+                {{ (metodoPagoSeleccionado === 'MIXTO' ? montoNequi : totalAPagarFinal) | currency:'COP':'symbol':'1.0-0' }}
+              </span>
+            </div>
+
+            <div *ngIf="metodoPagoSeleccionado === 'MIXTO' && totalPagadoMixto === 0" class="text-xs text-slate-400 italic text-center py-1">
+              Aún no has asignado montos.
+            </div>
           </div>
         </div>
 
-        <div *ngIf="metodoPagoSeleccionado === 'EFECTIVO' && totalAPagarFinal > 0" class="mt-4 mb-4">
-          <label class="block text-sm font-bold text-slate-700 mb-2">Dinero Recibido</label>
-          <div class="relative">
-            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
-            <input type="number" [(ngModel)]="dineroRecibido" class="w-full pl-8 pr-4 py-3 bg-white border border-slate-300 rounded-lg text-lg font-bold text-slate-800 focus:ring-2 focus:ring-primary focus:border-primary text-right" min="0">
+        <!-- Caja de Vueltos / Cambio -->
+        <div class="mt-auto space-y-2 pt-3 border-t border-slate-200">
+          
+          <!-- Cambio para Pago Simple Efectivo -->
+          <div *ngIf="metodoPagoSeleccionado === 'EFECTIVO'">
+            <div *ngIf="faltante > 0" class="flex justify-between items-center text-rose-600 bg-rose-50 border border-rose-200 p-2.5 rounded-xl">
+              <span class="font-bold text-xs">Falta dinero:</span>
+              <span class="font-black text-sm">{{ faltante | currency:'COP':'symbol':'1.0-0' }}</span>
+            </div>
+            <div *ngIf="faltante === 0" class="flex justify-between items-center text-emerald-700 bg-emerald-50 border border-emerald-200 p-3 rounded-xl">
+              <div>
+                <span class="font-bold text-xs block text-emerald-800">Cambio (Vueltos):</span>
+                <span class="text-[10px] text-emerald-600 font-medium">Entregar al cliente</span>
+              </div>
+              <span class="font-black text-2xl font-mono text-emerald-700">{{ cambio | currency:'COP':'symbol':'1.0-0' }}</span>
+            </div>
           </div>
-        </div>
 
-        <!-- Cambio / Faltante -->
-        <div *ngIf="metodoPagoSeleccionado === 'EFECTIVO' && totalAPagarFinal > 0" class="mt-auto space-y-2 pt-4 border-t border-slate-200">
-          <div *ngIf="faltante > 0" class="flex justify-between items-center text-red-500 bg-red-50 p-2 rounded-lg">
-            <span class="font-bold text-sm">Faltante:</span>
-            <span class="font-black">{{ faltante | currency:'COP':'symbol':'1.0-0' }}</span>
+          <!-- Cambio para Pago Mixto con parte en efectivo -->
+          <div *ngIf="metodoPagoSeleccionado === 'MIXTO' && montoEfectivo > 0">
+            <div *ngIf="cambioEfectivoMixto >= 0" class="flex justify-between items-center text-emerald-700 bg-emerald-50 border border-emerald-200 p-3 rounded-xl">
+              <div>
+                <span class="font-bold text-xs block text-emerald-800">Cambio (Vueltos Efectivo):</span>
+                <span class="text-[10px] text-emerald-600 font-medium">De billete recibido</span>
+              </div>
+              <span class="font-black text-xl font-mono text-emerald-700">{{ cambioEfectivoMixto | currency:'COP':'symbol':'1.0-0' }}</span>
+            </div>
           </div>
-          <div *ngIf="faltante === 0" class="flex justify-between items-center text-emerald-600 bg-emerald-50 p-3 rounded-lg">
-            <span class="font-bold text-sm">Cambio (Vueltos):</span>
-            <span class="font-black text-xl">{{ cambio | currency:'COP':'symbol':'1.0-0' }}</span>
+
+          <div *ngIf="(metodoPagoSeleccionado === 'TARJETA' || metodoPagoSeleccionado === 'NEQUI' || (metodoPagoSeleccionado === 'MIXTO' && montoEfectivo === 0))" class="bg-indigo-50/70 text-indigo-700 p-2.5 rounded-xl text-xs font-semibold text-center border border-indigo-100">
+            ✓ Cobro 100% exacto sin vueltos
           </div>
-        </div>
-        
-        <div *ngIf="metodoPagoSeleccionado !== 'EFECTIVO' && totalAPagarFinal > 0" class="mt-auto pt-4 border-t border-slate-200">
-          <div class="bg-indigo-50 text-indigo-700 p-3 rounded-lg text-sm font-medium text-center border border-indigo-100">
-            El pago se procesará por pasarela externa o datáfono.
-          </div>
+
         </div>
       </div>
     </div>
     
-    <!-- Pantalla de Éxito animada -->
-    <div *ngIf="ventaProcesadaExito" class="p-16 flex flex-col items-center justify-center text-center">
-      <div class="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mb-6 text-green-500 shadow-inner">
-        <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+    <!-- Pantalla de Éxito y Opciones Post-Venta (Factura + WhatsApp) -->
+    <div *ngIf="ventaProcesadaExito" class="p-8 sm:p-10 flex flex-col items-center justify-center text-center animate-fade-in max-h-[85vh] overflow-y-auto">
+      <div class="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-3 text-emerald-600 shadow-inner">
+        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
       </div>
-      <h2 class="text-3xl font-black text-slate-800 mb-2">¡Venta Exitosa!</h2>
-      <p class="text-slate-500">Imprimiendo recibo...</p>
+
+      <h2 class="text-2xl font-black text-slate-800 tracking-tight">¡Venta Registrada con Éxito!</h2>
+      <p class="text-slate-500 text-xs sm:text-sm mt-1">
+        Ticket <strong class="text-indigo-600 font-mono">#{{ ultimaVentaRealizada?.numero_ticket }}</strong> • Total: 
+        <strong class="text-emerald-600 font-black text-base">{{ ultimaVentaRealizada?.total | currency:'COP':'symbol':'1.0-0' }}</strong>
+      </p>
+
+      <!-- Ficha del Cliente en la Factura -->
+      <div class="my-4 w-full max-w-md p-3.5 bg-slate-50 rounded-2xl border border-slate-200 text-left shadow-2xs">
+        <div class="flex items-center justify-between mb-1.5">
+          <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Cliente Asignado a Factura</span>
+          <span *ngIf="ultimoCliente" class="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+            Cliente Registrado
+          </span>
+          <span *ngIf="!ultimoCliente" class="text-[10px] font-medium text-slate-500 bg-slate-200 px-2 py-0.5 rounded-full">
+            Consumidor Final (Sin Cliente)
+          </span>
+        </div>
+
+        <div *ngIf="ultimoCliente" class="space-y-1">
+          <p class="text-xs font-bold text-slate-800">{{ ultimoCliente.nombres }} {{ ultimoCliente.apellidos }}</p>
+          <div class="flex flex-wrap items-center gap-2 text-[11px] text-slate-600">
+            <span class="bg-white px-2 py-0.5 rounded border border-slate-200 font-mono">C.C. {{ ultimoCliente.cedula }}</span>
+            <span *ngIf="ultimoCliente.telefono" class="text-emerald-700 font-semibold flex items-center gap-1">
+              📱 {{ ultimoCliente.telefono }}
+            </span>
+          </div>
+          <p *ngIf="ultimoCliente.direccion" class="text-[11px] text-slate-500 truncate">Dir: {{ ultimoCliente.direccion }}</p>
+        </div>
+
+        <div *ngIf="!ultimoCliente">
+          <p class="text-[11px] text-slate-500">Venta efectuada a Consumidor Final sin cliente asociado.</p>
+        </div>
+      </div>
+
+      <!-- Acciones Principales: WhatsApp y Factura PDF -->
+      <div class="flex flex-col sm:flex-row gap-3 w-full max-w-md mt-1">
+        <!-- Botón Enviar WhatsApp (Si el cliente tiene teléfono registrado) -->
+        <button *ngIf="enlaceWhatsApp" type="button" (click)="enviarWhatsAppUltimaVenta()"
+                class="flex-1 px-4 py-3 bg-[#25D366] hover:bg-[#20ba5a] text-white rounded-xl font-bold text-xs sm:text-sm transition-all shadow-sm hover:shadow-md flex items-center justify-center gap-2 cursor-pointer">
+          <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
+          Enviar a WhatsApp
+        </button>
+
+        <!-- Botón Imprimir Factura PDF -->
+        <button type="button" (click)="imprimirFacturaUltimaVenta()"
+                class="flex-1 px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs sm:text-sm transition-all shadow-sm hover:shadow-md flex items-center justify-center gap-2 cursor-pointer">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+          Imprimir Factura PDF
+        </button>
+      </div>
+
+      <!-- Botón Nueva Venta / Listo -->
+      <button type="button" (click)="finalizarVentaYLimpiar()"
+              class="mt-4 px-6 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-colors cursor-pointer">
+        + Nueva Venta / Cerrar
+      </button>
     </div>
 
     <!-- Modal Footer -->
-    <div *ngIf="!ventaProcesadaExito" class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
-      <button (click)="cerrarModalCobro()" class="px-6 py-3 text-slate-600 bg-white border border-slate-300 hover:bg-slate-50 rounded-xl font-bold transition-colors">Cancelar</button>
-      <button (click)="procesarVenta()" [disabled]="faltante > 0 && metodoPagoSeleccionado === 'EFECTIVO'" class="px-8 py-3 bg-success hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-black transition-colors flex items-center gap-2 shadow-sm">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-        Confirmar Pago
-      </button>
+    <div *ngIf="!ventaProcesadaExito" class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-3">
+      <div class="text-xs text-slate-500">
+        <span *ngIf="metodoPagoSeleccionado === 'MIXTO'" class="font-semibold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-md border border-amber-200">
+          Modo Pago Mixto Activado
+        </span>
+      </div>
+      <div class="flex items-center gap-3 w-full sm:w-auto justify-end">
+        <button type="button" (click)="cerrarModalCobro()" class="px-5 py-2.5 text-slate-600 bg-white border border-slate-300 hover:bg-slate-50 rounded-xl font-bold text-sm transition-colors cursor-pointer">
+          Cancelar
+        </button>
+        <button type="button" (click)="procesarVenta()"
+                [disabled]="(metodoPagoSeleccionado === 'EFECTIVO' && faltante > 0) || (metodoPagoSeleccionado === 'MIXTO' && (faltanteMixto > 0 || excedenteMixto > 0 || (montoEfectivo > 0 && dineroRecibidoEfectivoMixto < montoEfectivo)))"
+                class="px-7 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl font-black text-sm transition-all flex items-center gap-2 shadow-sm cursor-pointer">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          Confirmar Pago ({{ totalAPagarFinal | currency:'COP':'symbol':'1.0-0' }})
+        </button>
+      </div>
     </div>
 
   </div>

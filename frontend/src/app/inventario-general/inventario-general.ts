@@ -18,11 +18,15 @@ interface InventarioItem {
   stock_actual: number;
   valor_compra: number;
   valor_venta: number;
+  controla_lotes?: boolean;
+  lotes?: any[];
+  proximo_vencimiento?: string | null;
 }
 
 interface MovimientoKardex {
   factura: string;
   fecha: string;
+  vendedor?: string;
   cantidad: number;
   valor_unitario: number;
   total: number;
@@ -34,62 +38,90 @@ interface MovimientoKardex {
   imports: [CommonModule, FormsModule],
   template: `
     <div class="p-6">
-      <!-- Header -->
-      <div class="flex justify-between items-center mb-6">
-        <div>
-          <h2 class="text-2xl font-bold text-textMain tracking-tight">Inventario General</h2>
-          <p class="text-textSecondary text-sm mt-1">Control total de stock, movimientos y valorización de la mercancía.</p>
-        </div>
-        <div class="flex items-center gap-4">
-          <!-- Búsqueda -->
-          <div class="relative">
-            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg class="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-            </div>
-            <input 
-              type="text" 
-              [(ngModel)]="searchTerm"
-              (input)="filtrarInventario()"
-              placeholder="Buscar por nombre o SKU..." 
-              class="pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent shadow-sm w-64"
-            >
+      <!-- Título y Subtítulo -->
+      <div class="mb-5">
+        <h1 class="text-2xl font-black text-slate-900 tracking-tight">Inventario General</h1>
+        <p class="text-slate-500 text-sm mt-0.5">Control total de stock, movimientos y valorización de la mercancía.</p>
+      </div>
+
+      <!-- Barra de Herramientas y Filtros (Fila completa horizontal) -->
+      <div class="flex flex-wrap items-center gap-3 mb-5">
+        <!-- Búsqueda -->
+        <div class="relative w-64 sm:w-72">
+          <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+            <svg class="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
           </div>
-          
-          <!-- Mostrar Registros -->
-          <div class="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-sm">
-            <span class="text-sm font-medium text-slate-500">Mostrar</span>
-            <select [(ngModel)]="itemsPerPage" (ngModelChange)="currentPage = 1; paginarInventario()" class="border-none bg-transparent py-1 pl-2 pr-6 text-sm font-bold text-slate-700 focus:ring-0 cursor-pointer outline-none">
-              <option [value]="5">5</option>
-              <option [value]="10">10</option>
-              <option [value]="25">25</option>
-              <option [value]="50">50</option>
-            </select>
-            <span class="text-sm font-medium text-slate-500">registros</span>
-          </div>
-          
-          <!-- Filtro Agotándose -->
-          <button (click)="toggleFiltroAgotandose()" 
-                  [class.bg-rose-50]="mostrarAgotandoseSolo" 
-                  [class.text-rose-700]="mostrarAgotandoseSolo"
-                  [class.border-rose-300]="mostrarAgotandoseSolo"
-                  [class.bg-white]="!mostrarAgotandoseSolo"
-                  [class.text-slate-600]="!mostrarAgotandoseSolo"
-                  [class.border-slate-200]="!mostrarAgotandoseSolo"
-                  class="border px-4 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 shadow-sm whitespace-nowrap" title="Ver solo productos agotándose">
-            <svg class="w-4 h-4" [class.animate-pulse]="mostrarAgotandoseSolo" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-            Agotándose
-          </button>
-          
-          <!-- Botones de Exportación -->
-          <button (click)="exportarExcel()" class="bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 px-4 py-2 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 shadow-sm" title="Exportar a Excel">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-            Excel
-          </button>
-          <button (click)="exportarPDF()" class="bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 px-4 py-2 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 shadow-sm" title="Exportar a PDF">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-            PDF
-          </button>
+          <input 
+            type="text" 
+            [(ngModel)]="searchTerm"
+            (input)="filtrarInventario()"
+            placeholder="Buscar por nombre o SKU..." 
+            class="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 shadow-2xs transition-all text-slate-700 placeholder-slate-400"
+          >
         </div>
+        
+        <!-- Mostrar Registros -->
+        <div class="flex items-center gap-2 bg-white px-3.5 py-2 rounded-2xl border border-slate-200 shadow-2xs">
+          <span class="text-sm font-medium text-slate-500">Mostrar</span>
+          <select [(ngModel)]="itemsPerPage" (ngModelChange)="currentPage = 1; paginarInventario()" class="border-none bg-transparent py-0 pl-1 pr-6 text-sm font-bold text-slate-700 focus:ring-0 cursor-pointer outline-none">
+            <option [value]="5">5</option>
+            <option [value]="10">10</option>
+            <option [value]="25">25</option>
+            <option [value]="50">50</option>
+          </select>
+          <span class="text-sm font-medium text-slate-500">registros</span>
+        </div>
+        
+        <!-- Filtro Agotándose -->
+        <button (click)="toggleFiltroAgotandose()" 
+                [class.bg-rose-50]="mostrarAgotandoseSolo" 
+                [class.text-rose-700]="mostrarAgotandoseSolo"
+                [class.border-rose-300]="mostrarAgotandoseSolo"
+                [class.bg-white]="!mostrarAgotandoseSolo"
+                [class.text-slate-700]="!mostrarAgotandoseSolo"
+                [class.border-slate-200]="!mostrarAgotandoseSolo"
+                class="border px-4 py-2 rounded-2xl text-sm font-bold transition-all flex items-center gap-2 shadow-2xs hover:bg-slate-50 cursor-pointer whitespace-nowrap" 
+                title="Ver solo productos agotándose">
+          <svg class="w-4 h-4 text-slate-500" [class.animate-pulse]="mostrarAgotandoseSolo" [class.text-rose-600]="mostrarAgotandoseSolo" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+          </svg>
+          Agotándose
+        </button>
+        
+        <!-- Filtro Vencidos -->
+        <button (click)="toggleFiltroVencidos()" 
+                [class.bg-rose-50]="mostrarVencidosSolo" 
+                [class.text-rose-800]="mostrarVencidosSolo"
+                [class.border-rose-400]="mostrarVencidosSolo"
+                [class.bg-white]="!mostrarVencidosSolo"
+                [class.text-slate-700]="!mostrarVencidosSolo"
+                [class.border-slate-200]="!mostrarVencidosSolo"
+                class="border px-4 py-2 rounded-2xl text-sm font-bold transition-all flex items-center gap-2 shadow-2xs hover:bg-slate-50 cursor-pointer whitespace-nowrap" 
+                title="Ver solo productos con lotes vencidos">
+          <svg class="w-4 h-4 text-slate-500" [class.animate-pulse]="mostrarVencidosSolo" [class.text-rose-600]="mostrarVencidosSolo" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          Vencidos
+          <span *ngIf="cantidadVencidos > 0" class="px-2 py-0.5 bg-rose-600 text-white text-[11px] font-black rounded-full shadow-xs leading-none">
+            {{ cantidadVencidos }}
+          </span>
+        </button>
+        
+        <!-- Botones de Exportación -->
+        <button (click)="exportarExcel()" class="bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-700 px-4 py-2 rounded-2xl text-sm font-bold transition-colors flex items-center gap-2 shadow-2xs cursor-pointer" title="Exportar a Excel">
+          <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+          </svg>
+          Excel
+        </button>
+        <button (click)="exportarPDF()" class="bg-rose-50 hover:bg-rose-100 border border-rose-300 text-rose-700 px-4 py-2 rounded-2xl text-sm font-bold transition-colors flex items-center gap-2 shadow-2xs cursor-pointer" title="Exportar a PDF">
+          <svg class="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+          </svg>
+          PDF
+        </button>
       </div>
 
       <!-- Tabla de Datos -->
@@ -109,40 +141,153 @@ interface MovimientoKardex {
                 <th class="px-4 py-3 text-right">V. Venta</th>
                 <th class="px-4 py-3 text-right">Valor Total</th>
               </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-100">
-              <tr *ngFor="let item of inventarioPaginado" (click)="abrirKardex(item)" class="hover:bg-slate-50/80 transition-colors text-sm cursor-pointer group">
-                <td class="px-4 py-3 font-mono text-indigo-600 font-bold bg-indigo-50/50 rounded-l-lg group-hover:bg-indigo-100/50 transition-colors">{{ item.sku }}</td>
-                <td class="px-4 py-3 font-bold text-textMain whitespace-normal break-words leading-tight min-w-[200px]">
-                  <div>{{ item.nombre_producto }}</div>
-                  <div *ngIf="item.stock_actual <= item.stock_minimo" class="mt-1.5 inline-flex items-center gap-1 text-[10px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full shadow-sm">
-                    <svg class="w-3 h-3 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-                    ¡Agotándose!
-                  </div>
-                </td>
-                <td class="px-4 py-3 text-center text-slate-600">{{ item.fecha_ingreso | date:'dd/MM/yyyy' }}</td>
-                <td class="px-4 py-3 text-center text-slate-600">
-                  <span *ngIf="item.fecha_salida">{{ item.fecha_salida | date:'dd/MM/yyyy' }}</span>
-                  <span *ngIf="!item.fecha_salida" class="text-slate-400 italic">Sin salidas</span>
-                </td>
-                <td class="px-4 py-3 text-center text-slate-600">{{ item.stock_minimo }}</td>
-                <td class="px-4 py-3 text-center">
-                  <span class="px-2.5 py-1 rounded-lg font-bold text-xs" 
-                        [ngClass]="{
-                          'bg-emerald-100 text-emerald-700': item.stock_actual > item.stock_minimo,
-                          'bg-amber-100 text-amber-700': item.stock_actual === item.stock_minimo,
-                          'bg-rose-100 text-rose-700': item.stock_actual < item.stock_minimo
-                        }">
-                    {{ item.stock_actual }}
-                  </span>
-                </td>
-                <td class="px-4 py-3 text-center font-bold text-slate-700">{{ item.cantidad_vendida }}</td>
-                <td class="px-4 py-3 text-right text-slate-600">{{ item.valor_compra | currency:'COP':'symbol':'1.0-0' }}</td>
-                <td class="px-4 py-3 text-right font-semibold text-textMain">{{ item.valor_venta | currency:'COP':'symbol':'1.0-0' }}</td>
-                <td class="px-4 py-3 text-right font-black text-indigo-600">{{ (item.valor_venta * item.cantidad_vendida) | currency:'COP':'symbol':'1.0-0' }}</td>
-              </tr>
+                      <tbody class="divide-y divide-slate-100">
+              <ng-container *ngFor="let item of inventarioPaginado">
+                <!-- Fila Principal de Datos del Producto -->
+                <tr (click)="abrirKardex(item)" 
+                    class="hover:bg-slate-50/80 transition-colors text-sm cursor-pointer group"
+                    [class.border-b-0]="item.controla_lotes && item.lotes && item.lotes.length > 0">
+                  
+                  <!-- SKU con rowspan si tiene subfila de lotes -->
+                  <td [attr.rowspan]="(item.controla_lotes && item.lotes && item.lotes.length > 0) ? 2 : 1"
+                      class="px-4 py-3 font-mono font-bold rounded-l-lg transition-colors align-middle"
+                      [ngClass]="{
+                        'bg-rose-100/70 text-rose-700 group-hover:bg-rose-200/60': getEstadoVencimiento(item) === 'vencido',
+                        'bg-amber-100/60 text-amber-800 group-hover:bg-amber-200/50': getEstadoVencimiento(item) === 'por_vencer',
+                        'bg-indigo-50/50 text-indigo-600 group-hover:bg-indigo-100/50': getEstadoVencimiento(item) === 'vigente' || getEstadoVencimiento(item) === 'sin_lotes'
+                      }">
+                    {{ item.sku }}
+                  </td>
+
+                  <!-- Nombre del Producto con FEFO y Contador de Lotes -->
+                  <td class="px-4 py-3 font-bold text-textMain whitespace-nowrap min-w-[220px]">
+                    <div class="flex items-center gap-2">
+                      <span class="text-slate-900 font-bold text-sm tracking-tight">{{ item.nombre_producto }}</span>
+
+                      <!-- Badge FEFO -->
+                      <span *ngIf="item.controla_lotes" 
+                            [ngClass]="{
+                              'bg-rose-100 text-rose-700 border-rose-300': getEstadoVencimiento(item) === 'vencido',
+                              'bg-amber-100 text-amber-800 border-amber-300': getEstadoVencimiento(item) === 'por_vencer',
+                              'bg-purple-50 text-purple-700 border-purple-200': getEstadoVencimiento(item) === 'vigente' || getEstadoVencimiento(item) === 'sin_lotes'
+                            }"
+                            class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold border transition-colors shadow-2xs">
+                        FEFO
+                      </span>
+
+                      <!-- Contador total de lotes -->
+                      <span *ngIf="item.controla_lotes && item.lotes && item.lotes.length > 0" 
+                            class="bg-slate-100 text-slate-700 border border-slate-200 px-2 py-0.5 rounded-md text-[10px] font-extrabold tracking-wide">
+                        {{ item.lotes.length }} Lote(s)
+                      </span>
+                    </div>
+
+                    <!-- Alerta Agotándose -->
+                    <div *ngIf="item.stock_actual <= item.stock_minimo" class="mt-1 inline-flex items-center gap-1 text-[10px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full shadow-sm">
+                      <svg class="w-3 h-3 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                      ¡Agotándose!
+                    </div>
+
+                    <!-- Sin lotes activos -->
+                    <div *ngIf="item.controla_lotes && (!item.lotes || item.lotes.length === 0)" class="mt-1 flex items-center gap-2 text-xs font-semibold text-slate-400">
+                      <span class="bg-slate-100 px-2 py-0.5 rounded-md text-slate-500 border border-slate-200">Sin lotes activos</span>
+                    </div>
+                  </td>
+
+                  <!-- Columnas de datos de la compra/venta -->
+                  <td class="px-4 py-3 text-center text-slate-600 whitespace-nowrap">{{ item.fecha_ingreso | date:'dd/MM/yyyy' }}</td>
+                  <td class="px-4 py-3 text-center text-slate-600 whitespace-nowrap">
+                    <span *ngIf="item.fecha_salida">{{ item.fecha_salida | date:'dd/MM/yyyy' }}</span>
+                    <span *ngIf="!item.fecha_salida" class="text-slate-400 italic">Sin salidas</span>
+                  </td>
+                  <td class="px-4 py-3 text-center text-slate-600">{{ item.stock_minimo }}</td>
+                  <td class="px-4 py-3 text-center">
+                    <span class="px-2.5 py-1 rounded-lg font-bold text-xs" 
+                          [ngClass]="{
+                            'bg-emerald-100 text-emerald-700': item.stock_actual > item.stock_minimo,
+                            'bg-amber-100 text-amber-700': item.stock_actual === item.stock_minimo,
+                            'bg-rose-100 text-rose-700': item.stock_actual < item.stock_minimo
+                          }">
+                      {{ item.stock_actual }}
+                    </span>
+                  </td>
+                  <td class="px-4 py-3 text-center font-bold text-slate-700">{{ item.cantidad_vendida }}</td>
+                  <td class="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{{ item.valor_compra | currency:'COP':'symbol':'1.0-0' }}</td>
+                  <td class="px-4 py-3 text-right font-semibold text-textMain whitespace-nowrap">{{ item.valor_venta | currency:'COP':'symbol':'1.0-0' }}</td>
+                  <td class="px-4 py-3 text-right font-black text-indigo-600 whitespace-nowrap rounded-r-lg">{{ (item.valor_venta * item.cantidad_vendida) | currency:'COP':'symbol':'1.0-0' }}</td>
+                </tr>
+
+                <!-- Subfila Horizontal de Lotes: Se extiende debajo a lo largo de las columnas (como en la imagen del usuario) -->
+                <tr *ngIf="item.controla_lotes && item.lotes && item.lotes.length > 0"
+                    (click)="abrirKardex(item)"
+                    class="hover:bg-slate-50/80 transition-colors text-sm cursor-pointer border-b border-slate-100"
+                    [ngClass]="{
+                      'bg-rose-50/20': getEstadoVencimiento(item) === 'vencido',
+                      'bg-amber-50/15': getEstadoVencimiento(item) === 'por_vencer'
+                    }">
+                  <td colspan="9" class="px-4 pb-3 pt-0">
+                    <div class="flex items-center gap-x-6 flex-nowrap overflow-x-auto py-1">
+                      <div *ngFor="let lote of item.lotes; let idx = index" 
+                           class="inline-flex items-center gap-2 text-xs whitespace-nowrap flex-shrink-0">
+                        
+                        <!-- CASO 1: Lote Vencido (Rojo / Rose) -->
+                        <ng-container *ngIf="getDiasParaVencer(lote.fecha_vencimiento)! < 0">
+                          <span class="inline-flex items-center gap-1 bg-rose-50 text-rose-600 font-extrabold px-2 py-0.5 rounded-lg border border-rose-300 shadow-2xs">
+                            <svg class="w-3.5 h-3.5 text-rose-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                            </svg>
+                            ¡VENCIDO!
+                          </span>
+                          <span class="bg-rose-50 text-rose-700 border border-rose-200 px-2 py-0.5 rounded-lg font-bold">
+                            Lote {{ lote.numero_lote || (idx + 1) }} ({{ formatStockLote(lote.stock_actual) }} und)
+                          </span>
+                          <span class="text-rose-600 font-medium">
+                            Venció: <strong class="text-rose-700 underline font-bold">{{ lote.fecha_vencimiento | date:'dd/MM/yyyy' }}</strong>
+                            <span class="text-[11px] text-rose-400 font-normal ml-1">({{ getDiasParaVencerTexto(lote.fecha_vencimiento) }})</span>
+                          </span>
+                        </ng-container>
+
+                        <!-- CASO 2: Lote Por Vencer (próximos 15 días - Ámbar) -->
+                        <ng-container *ngIf="getDiasParaVencer(lote.fecha_vencimiento)! >= 0 && getDiasParaVencer(lote.fecha_vencimiento)! <= 15">
+                          <span class="inline-flex items-center gap-1 bg-amber-50 text-amber-700 font-extrabold px-2 py-0.5 rounded-lg border border-amber-300 shadow-2xs">
+                            <svg class="w-3.5 h-3.5 text-amber-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            {{ getDiasParaVencer(lote.fecha_vencimiento) === 0 ? '¡VENCE HOY!' : 'POR VENCER' }}
+                          </span>
+                          <span class="bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-lg font-bold">
+                            Lote {{ lote.numero_lote || (idx + 1) }} ({{ formatStockLote(lote.stock_actual) }} und)
+                          </span>
+                          <span class="text-amber-800 font-medium">
+                            Vence: <strong class="text-amber-900 font-bold">{{ lote.fecha_vencimiento | date:'dd/MM/yyyy' }}</strong>
+                            <span class="text-[11px] text-amber-500 font-normal ml-1">({{ getDiasParaVencerTexto(lote.fecha_vencimiento) }})</span>
+                          </span>
+                        </ng-container>
+
+                        <!-- CASO 3: Lote Vigente (más de 15 días - Esmeralda / Suave) -->
+                        <ng-container *ngIf="getDiasParaVencer(lote.fecha_vencimiento)! > 15">
+                          <span class="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded-lg border border-emerald-300 shadow-2xs">
+                            <svg class="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            AL DÍA
+                          </span>
+                          <span class="bg-slate-100 text-slate-700 border border-slate-200 px-2 py-0.5 rounded-lg font-semibold">
+                            Lote {{ lote.numero_lote || (idx + 1) }} ({{ formatStockLote(lote.stock_actual) }} und)
+                          </span>
+                          <span class="text-slate-600 font-normal">
+                            Vence: <strong class="text-slate-800 font-semibold">{{ lote.fecha_vencimiento | date:'dd/MM/yyyy' }}</strong>
+                            <span class="text-[11px] text-slate-400 font-normal ml-1">({{ getDiasParaVencerTexto(lote.fecha_vencimiento) }})</span>
+                          </span>
+                        </ng-container>
+
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              </ng-container>
               <tr *ngIf="inventarioPaginado.length === 0">
-                <td colspan="9" class="px-4 py-12 text-center">
+                <td colspan="10" class="px-4 py-12 text-center">
                   <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-100 mb-4">
                     <svg class="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg>
                   </div>
@@ -190,69 +335,113 @@ interface MovimientoKardex {
     <!-- Modal de Kardex -->
     <div *ngIf="modalKardexVisible" class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
       <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" (click)="cerrarKardex()"></div>
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-6xl max-h-[90vh] flex flex-col relative z-10 animate-fade-in-up">
+      <div class="bg-white rounded-3xl shadow-2xl w-full max-w-6xl max-h-[92vh] flex flex-col relative z-10 animate-fade-in-up border border-slate-100 overflow-hidden">
         
         <!-- Header del Modal -->
-        <div class="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 rounded-t-2xl">
-          <div>
-            <div class="flex items-center gap-3">
-              <span class="bg-indigo-100 text-indigo-700 font-mono font-bold px-3 py-1 rounded-lg text-sm">{{ productoSeleccionado?.sku }}</span>
-              <h3 class="text-xl font-bold text-textMain">{{ productoSeleccionado?.nombre_producto }}</h3>
-            </div>
-            <p class="text-sm text-slate-500 mt-1">Historial de movimientos: Entradas y Salidas</p>
-          </div>
-          <div class="flex items-center gap-3">
-            <button (click)="exportarKardexPDF()" class="bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 px-4 py-2 rounded-xl text-sm font-bold transition-colors flex items-center gap-2">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-              Exportar PDF
-            </button>
-            <button (click)="cerrarKardex()" class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors">
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-            </button>
-          </div>
-        </div>
+        <div class="px-6 py-4 border-b border-slate-100 bg-white rounded-t-3xl relative">
+          <!-- Botón Cerrar (X) FIJO en la esquina superior derecha -->
+          <button (click)="cerrarKardex()" 
+                  class="absolute top-4 right-5 p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-all cursor-pointer z-20" 
+                  title="Cerrar modal">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
 
-        <!-- Cuerpo del Modal (2 Columnas) -->
-        <div class="flex-1 overflow-y-auto p-6 bg-slate-50/30">
-          
-          <!-- Indicador de Stock Actual -->
-          <div class="mb-6 flex items-center">
-            <div class="inline-flex items-center gap-3 bg-white border border-slate-200 shadow-sm px-4 py-2.5 rounded-xl">
-              <div class="w-8 h-8 rounded-lg flex items-center justify-center" 
-                   [ngClass]="{
-                     'bg-emerald-100 text-emerald-600': productoSeleccionado?.stock_actual! > productoSeleccionado?.stock_minimo!,
-                     'bg-amber-100 text-amber-600': productoSeleccionado?.stock_actual! === productoSeleccionado?.stock_minimo!,
-                     'bg-rose-100 text-rose-600': productoSeleccionado?.stock_actual! < productoSeleccionado?.stock_minimo!
-                   }">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+          <!-- Fila Superior: SKU y Título del Producto -->
+          <div class="pr-12 mb-3.5 flex items-center gap-3">
+            <span class="bg-indigo-50 text-indigo-600 font-bold px-3 py-1.5 rounded-xl text-xs font-mono border border-indigo-100">
+              {{ productoSeleccionado?.sku }}
+            </span>
+            <div>
+              <h3 class="text-xl font-black text-slate-900 tracking-tight leading-tight">{{ productoSeleccionado?.nombre_producto }}</h3>
+              <p class="text-xs text-slate-400 font-medium mt-0.5">Historial de movimientos: Entradas y Salidas</p>
+            </div>
+          </div>
+
+          <!-- Fila Inferior: Indicadores (Stock Actual + Tarjetas de Cada Lote) -->
+          <div class="flex items-center gap-3 overflow-x-auto pb-1 pt-0.5">
+            <!-- Indicador Stock Actual -->
+            <div class="inline-flex items-center gap-3 bg-white border border-slate-200/90 shadow-2xs px-3.5 py-1.5 rounded-2xl flex-shrink-0">
+              <div class="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-200/80 flex items-center justify-center text-emerald-600 flex-shrink-0">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+                </svg>
               </div>
               <div class="flex flex-col">
-                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider leading-none">Stock Actual</span>
-                <span class="text-xl font-black leading-tight"
-                      [ngClass]="{
-                        'text-emerald-700': productoSeleccionado?.stock_actual! > productoSeleccionado?.stock_minimo!,
-                        'text-amber-700': productoSeleccionado?.stock_actual! === productoSeleccionado?.stock_minimo!,
-                        'text-rose-700': productoSeleccionado?.stock_actual! < productoSeleccionado?.stock_minimo!
-                      }">
+                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none">Stock Actual</span>
+                <span class="text-base font-black text-emerald-700 leading-tight mt-0.5">
                   {{ productoSeleccionado?.stock_actual }} und
                 </span>
               </div>
             </div>
-          </div>
 
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            
-            <!-- Columna Compras (Entradas) -->
-            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-              <div class="bg-emerald-50 border-b border-emerald-100 px-5 py-4 flex items-center gap-3">
-                <div class="w-8 h-8 rounded-full bg-emerald-200 flex items-center justify-center text-emerald-700">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"></path></svg>
+            <!-- Si controla lotes: Tarjeta por CADA lote activo -->
+            <ng-container *ngIf="productoSeleccionado?.controla_lotes && productoSeleccionado?.lotes && productoSeleccionado?.lotes!.length > 0">
+              <div *ngFor="let lote of productoSeleccionado?.lotes; let idx = index" 
+                   class="inline-flex items-center gap-3 bg-white border border-slate-200/90 shadow-2xs px-3.5 py-1.5 rounded-2xl flex-shrink-0">
+                <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+                     [ngClass]="{
+                       'bg-rose-50 text-rose-600 border border-rose-200/80': getDiasParaVencer(lote.fecha_vencimiento)! < 0,
+                       'bg-amber-50 text-amber-700 border border-amber-200/80': getDiasParaVencer(lote.fecha_vencimiento)! >= 0 && getDiasParaVencer(lote.fecha_vencimiento)! <= 15,
+                       'bg-emerald-50 text-emerald-600 border border-emerald-200/80': getDiasParaVencer(lote.fecha_vencimiento)! > 15
+                     }">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                  </svg>
                 </div>
-                <h4 class="font-bold text-emerald-800 text-lg">Compras (Ingresos)</h4>
+                <div class="flex flex-col">
+                  <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none">
+                    Control Lotes (FEFO) · Lote {{ lote.numero_lote || (idx + 1) }} ({{ formatStockLote(lote.stock_actual) }} und)
+                  </span>
+                  <span class="text-xs font-black leading-tight mt-0.5"
+                        [ngClass]="{
+                          'text-rose-600': getDiasParaVencer(lote.fecha_vencimiento)! < 0,
+                          'text-amber-700': getDiasParaVencer(lote.fecha_vencimiento)! >= 0 && getDiasParaVencer(lote.fecha_vencimiento)! <= 15,
+                          'text-emerald-700': getDiasParaVencer(lote.fecha_vencimiento)! > 15
+                        }">
+                    {{ getDiasParaVencer(lote.fecha_vencimiento)! < 0 ? '¡LOTE VENCIDO!' : (getDiasParaVencer(lote.fecha_vencimiento)! === 0 ? '¡VENCE HOY!' : (getDiasParaVencer(lote.fecha_vencimiento)! <= 15 ? 'POR VENCER' : 'AL DÍA')) }}
+                  </span>
+                  <span class="text-[11px] text-slate-500 font-medium leading-none mt-0.5">
+                    ({{ getDiasParaVencer(lote.fecha_vencimiento)! < 0 ? 'Venció' : 'Vence' }}: {{ lote.fecha_vencimiento | date:'dd/MM/yyyy' }})
+                  </span>
+                </div>
+              </div>
+            </ng-container>
+
+            <!-- Si controla lotes pero no tiene lotes activos -->
+            <div *ngIf="productoSeleccionado?.controla_lotes && (!productoSeleccionado?.lotes || productoSeleccionado?.lotes!.length === 0)"
+                 class="inline-flex items-center gap-3 bg-white border border-slate-200/90 shadow-2xs px-3.5 py-1.5 rounded-2xl flex-shrink-0">
+              <div class="w-8 h-8 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-500 flex-shrink-0">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                </svg>
+              </div>
+              <div class="flex flex-col">
+                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none">Control Lotes (FEFO)</span>
+                <span class="text-xs font-bold text-slate-500 leading-tight mt-0.5">Sin lotes activos</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cuerpo del Modal (2 Columnas: Compras y Ventas) -->
+        <div class="flex-1 overflow-y-auto p-6 bg-slate-50/30">
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            <!-- Columna Compras (Ingresos) -->
+            <div class="bg-white rounded-2xl border border-slate-200/80 shadow-2xs overflow-hidden">
+              <div class="bg-emerald-50/70 border-b border-emerald-100/80 px-5 py-3.5 flex items-center gap-3">
+                <div class="w-7 h-7 rounded-full bg-emerald-200/80 flex items-center justify-center text-emerald-800">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"></path>
+                  </svg>
+                </div>
+                <h4 class="font-bold text-emerald-900 text-base">Compras (Ingresos)</h4>
               </div>
               <div class="overflow-x-auto">
-                <table class="w-full text-left text-sm whitespace-nowrap">
-                  <thead class="bg-slate-50 text-slate-500 font-semibold border-b border-slate-100">
+                <table class="w-full text-left text-xs whitespace-nowrap">
+                  <thead class="bg-slate-50/60 text-slate-500 font-semibold border-b border-slate-100">
                     <tr>
                       <th class="px-4 py-3">Factura</th>
                       <th class="px-4 py-3">Fecha Ent.</th>
@@ -273,24 +462,35 @@ interface MovimientoKardex {
                       <td colspan="5" class="px-4 py-8 text-center text-slate-400 italic">No hay ingresos registrados</td>
                     </tr>
                   </tbody>
+                  <tfoot *ngIf="comprasKardex.length > 0" class="bg-slate-50 font-bold border-t border-slate-200">
+                    <tr>
+                      <td colspan="2" class="px-4 py-2.5 text-slate-700 uppercase text-[11px]">Total Compras</td>
+                      <td class="px-4 py-2.5 text-center text-emerald-600 font-black">+{{ getTotalCantidadCompras() }}</td>
+                      <td></td>
+                      <td class="px-4 py-2.5 text-right text-emerald-700 font-black">{{ getTotalValorCompras() | currency:'COP':'symbol':'1.0-0' }}</td>
+                    </tr>
+                  </tfoot>
                 </table>
               </div>
             </div>
 
             <!-- Columna Ventas (Salidas) -->
-            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-              <div class="bg-indigo-50 border-b border-indigo-100 px-5 py-4 flex items-center gap-3">
-                <div class="w-8 h-8 rounded-full bg-indigo-200 flex items-center justify-center text-indigo-700">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4"></path></svg>
+            <div class="bg-white rounded-2xl border border-slate-200/80 shadow-2xs overflow-hidden">
+              <div class="bg-indigo-50/70 border-b border-indigo-100/80 px-5 py-3.5 flex items-center gap-3">
+                <div class="w-7 h-7 rounded-full bg-indigo-200/80 flex items-center justify-center text-indigo-800">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4"></path>
+                  </svg>
                 </div>
-                <h4 class="font-bold text-indigo-800 text-lg">Ventas (Salidas)</h4>
+                <h4 class="font-bold text-indigo-900 text-base">Ventas (Salidas)</h4>
               </div>
               <div class="overflow-x-auto">
-                <table class="w-full text-left text-sm whitespace-nowrap">
-                  <thead class="bg-slate-50 text-slate-500 font-semibold border-b border-slate-100">
+                <table class="w-full text-left text-xs whitespace-nowrap">
+                  <thead class="bg-slate-50/60 text-slate-500 font-semibold border-b border-slate-100">
                     <tr>
                       <th class="px-4 py-3">Factura/Ticket</th>
                       <th class="px-4 py-3">Fecha Sal.</th>
+                      <th class="px-4 py-3">Vendedor</th>
                       <th class="px-4 py-3 text-center">Cant.</th>
                       <th class="px-4 py-3 text-right">V. Venta U.</th>
                       <th class="px-4 py-3 text-right">Total</th>
@@ -300,19 +500,39 @@ interface MovimientoKardex {
                     <tr *ngFor="let v of ventasKardex" class="hover:bg-indigo-50/30 transition-colors">
                       <td class="px-4 py-3 font-mono text-slate-600">{{ v.factura }}</td>
                       <td class="px-4 py-3 text-slate-600">{{ v.fecha | date:'dd/MM/yyyy HH:mm' }}</td>
+                      <td class="px-4 py-3 text-slate-700 font-medium">{{ v.vendedor || 'Vendedor' }}</td>
                       <td class="px-4 py-3 text-center font-bold text-rose-500">-{{ v.cantidad }}</td>
                       <td class="px-4 py-3 text-right text-slate-600">{{ v.valor_unitario | currency:'COP':'symbol':'1.0-0' }}</td>
                       <td class="px-4 py-3 text-right font-semibold text-indigo-700">{{ v.total | currency:'COP':'symbol':'1.0-0' }}</td>
                     </tr>
                     <tr *ngIf="ventasKardex.length === 0">
-                      <td colspan="5" class="px-4 py-8 text-center text-slate-400 italic">No hay salidas registradas</td>
+                      <td colspan="6" class="px-4 py-8 text-center text-slate-400 italic">No hay salidas registradas</td>
                     </tr>
                   </tbody>
+                  <tfoot *ngIf="ventasKardex.length > 0" class="bg-slate-50 font-bold border-t border-slate-200">
+                    <tr>
+                      <td colspan="3" class="px-4 py-2.5 text-slate-700 uppercase text-[11px]">Total Ventas</td>
+                      <td class="px-4 py-2.5 text-center text-rose-500 font-black">-{{ getTotalCantidadVentas() }}</td>
+                      <td></td>
+                      <td class="px-4 py-2.5 text-right text-indigo-700 font-black">{{ getTotalValorVentas() | currency:'COP':'symbol':'1.0-0' }}</td>
+                    </tr>
+                  </tfoot>
                 </table>
               </div>
             </div>
 
           </div>
+        </div>
+
+        <!-- Footer del Modal con Exportar PDF -->
+        <div class="px-6 py-4 bg-white border-t border-slate-100 rounded-b-3xl flex justify-end items-center">
+          <button (click)="exportarKardexPDF()" 
+                  class="bg-rose-50/80 hover:bg-rose-100 border border-rose-200 text-rose-700 px-4 py-2 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 shadow-2xs cursor-pointer">
+            <svg class="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+            Exportar PDF
+          </button>
         </div>
       </div>
     </div>
@@ -321,9 +541,62 @@ interface MovimientoKardex {
 export class InventarioGeneralComponent implements OnInit {
   searchTerm: string = '';
   mostrarAgotandoseSolo: boolean = false;
+  mostrarVencidosSolo: boolean = false;
   inventarioOriginal: InventarioItem[] = [];
   inventarioFiltrado: InventarioItem[] = [];
   inventarioPaginado: InventarioItem[] = [];
+
+  get cantidadVencidos(): number {
+    return this.inventarioOriginal.filter(item => this.getEstadoVencimiento(item) === 'vencido').length;
+  }
+
+  getEstadoVencimiento(item: InventarioItem): 'vencido' | 'por_vencer' | 'vigente' | 'sin_lotes' {
+    if (!item.controla_lotes || !item.proximo_vencimiento) {
+      return 'sin_lotes';
+    }
+    const dias = this.getDiasParaVencer(item.proximo_vencimiento);
+    if (dias === null) return 'sin_lotes';
+    if (dias < 0) return 'vencido';
+    if (dias <= 15) return 'por_vencer';
+    return 'vigente';
+  }
+
+  getDiasParaVencer(fechaStr: string | null | undefined): number | null {
+    if (!fechaStr) return null;
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+
+    const venc = new Date(fechaStr);
+    if (isNaN(venc.getTime())) return null;
+
+    if (typeof fechaStr === 'string' && fechaStr.includes('-')) {
+      const parts = fechaStr.split('T')[0].split('-');
+      if (parts.length === 3) {
+        venc.setFullYear(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+      }
+    }
+    venc.setHours(0, 0, 0, 0);
+
+    const diffTime = venc.getTime() - hoy.getTime();
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  }
+
+  getDiasParaVencerTexto(fechaStr: string | null | undefined): string {
+    const dias = this.getDiasParaVencer(fechaStr);
+    if (dias === null) return '';
+    if (dias < 0) {
+      const abs = Math.abs(dias);
+      return abs === 1 ? 'venció ayer' : `venció hace ${abs} días`;
+    }
+    if (dias === 0) return 'vence hoy';
+    if (dias === 1) return 'vence mañana';
+    return `vence en ${dias} días`;
+  }
+
+  formatStockLote(stock: any): string {
+    const num = Number(stock) || 0;
+    return num.toFixed(2);
+  }
   
   // Paginación
   itemsPerPage: number = 10;
@@ -364,10 +637,17 @@ export class InventarioGeneralComponent implements OnInit {
       next: (data) => {
         this.inventarioOriginal = data.map(p => {
           const variante = p.variantes && p.variantes.length > 0 ? p.variantes[0] : null;
+          const lotesActivos = (p.lotes || []).filter((l: any) => Number(l.stock_actual) > 0);
+          lotesActivos.sort((a: any, b: any) => new Date(a.fecha_vencimiento).getTime() - new Date(b.fecha_vencimiento).getTime());
+          const proximoVenc = lotesActivos.length > 0 ? lotesActivos[0].fecha_vencimiento : null;
+
           return {
             id: p.id,
             sku: variante ? variante.sku : '',
             nombre_producto: p.nombre,
+            controla_lotes: p.controla_lotes || false,
+            lotes: lotesActivos,
+            proximo_vencimiento: proximoVenc,
             fecha_ingreso: p.created_at || new Date().toISOString(),
             fecha_salida: variante && variante.last_sale_date ? variante.last_sale_date : null,
             cantidad_vendida: variante && variante.total_sold ? Number(variante.total_sold) : 0,
@@ -386,6 +666,13 @@ export class InventarioGeneralComponent implements OnInit {
 
   toggleFiltroAgotandose() {
     this.mostrarAgotandoseSolo = !this.mostrarAgotandoseSolo;
+    if (this.mostrarAgotandoseSolo) this.mostrarVencidosSolo = false;
+    this.filtrarInventario();
+  }
+
+  toggleFiltroVencidos() {
+    this.mostrarVencidosSolo = !this.mostrarVencidosSolo;
+    if (this.mostrarVencidosSolo) this.mostrarAgotandoseSolo = false;
     this.filtrarInventario();
   }
 
@@ -394,6 +681,10 @@ export class InventarioGeneralComponent implements OnInit {
 
     if (this.mostrarAgotandoseSolo) {
       filtrado = filtrado.filter(item => item.stock_actual <= item.stock_minimo);
+    }
+
+    if (this.mostrarVencidosSolo) {
+      filtrado = filtrado.filter(item => this.getEstadoVencimiento(item) === 'vencido');
     }
 
     const term = this.searchTerm.toLowerCase().trim();
@@ -487,16 +778,16 @@ export class InventarioGeneralComponent implements OnInit {
 
   exportarPDF() {
     const columns = [
-      'SKU', 
+      'Código\nSKU', 
       'Producto', 
-      'Últ. Ing.', 
-      'Últ. Sal.', 
-      'S. Mín.',
-      'S.Act.',
-      'C. Vendida', 
-      'V.Compra', 
-      'V.Venta',
-      'V.Total'
+      'Último\nIngreso', 
+      'Última\nSalida', 
+      'Stock\nMínimo',
+      'Stock\nActual',
+      'Cantidad\nVendida', 
+      'Valor\nCompra', 
+      'Valor\nVenta',
+      'Valor\nTotal'
     ];
     
     const dataToExport = this.inventarioFiltrado.map(item => [
@@ -534,6 +825,7 @@ export class InventarioGeneralComponent implements OnInit {
         this.ventasKardex = kardex.ventas.map((v: any) => ({
           factura: v.factura,
           fecha: v.fecha,
+          vendedor: v.vendedor || 'Vendedor',
           cantidad: Number(v.cantidad),
           valor_unitario: Number(v.valor_unitario),
           total: Number(v.total)
@@ -560,5 +852,21 @@ export class InventarioGeneralComponent implements OnInit {
   exportarKardexPDF() {
     if (!this.productoSeleccionado) return;
     this.exportService.exportarKardexPDF(this.productoSeleccionado, this.comprasKardex, this.ventasKardex);
+  }
+
+  getTotalCantidadCompras(): number {
+    return this.comprasKardex.reduce((acc, c) => acc + Number(c.cantidad || 0), 0);
+  }
+
+  getTotalValorCompras(): number {
+    return this.comprasKardex.reduce((acc, c) => acc + Number(c.total || 0), 0);
+  }
+
+  getTotalCantidadVentas(): number {
+    return this.ventasKardex.reduce((acc, v) => acc + Number(v.cantidad || 0), 0);
+  }
+
+  getTotalValorVentas(): number {
+    return this.ventasKardex.reduce((acc, v) => acc + Number(v.total || 0), 0);
   }
 }

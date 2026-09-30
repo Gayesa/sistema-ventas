@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, Get, Query, UseGuards, Req } from '@nestjs/common';
 import { ComprasService } from './compras.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ClsService } from 'nestjs-cls';
@@ -12,14 +12,18 @@ export class ComprasController {
   ) {}
 
   @Post()
-  async registrarCompra(@Body() dto: any) {
-    const empresaId = this.cls.get('empresa_id');
+  async registrarCompra(@Req() req: any, @Body() dto: any) {
+    const empresaId = req.user?.empresa_id || this.cls.get('empresa_id');
     return await this.comprasService.registrarCompra(empresaId, dto);
   }
 
   @Get()
-  async listarCompras(@Query('fechaInicio') fechaInicio?: string, @Query('fechaFin') fechaFin?: string) {
-    const empresaId = this.cls.get('empresa_id');
+  async listarCompras(
+    @Req() req: any,
+    @Query('fechaInicio') fechaInicio?: string,
+    @Query('fechaFin') fechaFin?: string
+  ) {
+    const empresaId = req.user?.empresa_id || this.cls.get('empresa_id');
     return await this.comprasService.listarCompras(empresaId, fechaInicio, fechaFin);
   }
 }

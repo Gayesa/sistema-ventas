@@ -47,6 +47,7 @@ export class JwtAuthGuard implements CanActivate {
       sub: payload.sub,
       empresa_id: empresaIdFromToken,
       rol: payload.rol,
+      nombre: payload.nombre,
     };
 
     return true;

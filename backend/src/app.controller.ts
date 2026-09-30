@@ -33,16 +33,24 @@ export class AppController {
     const user = await this.dataSource.getRepository(Usuario)
       .createQueryBuilder('usuario')
       .addSelect('usuario.password')
-      .where('usuario.email = :email', { email })
+      .where('LOWER(usuario.email) = LOWER(:email)', { email })
       .getOne();
 
-    if (!user || !user.password) {
-      throw new UnauthorizedException('Credenciales inválidas');
+    if (!user) {
+      throw new UnauthorizedException('El usuario no existe');
+    }
+
+    if (!user.activo) {
+      throw new UnauthorizedException('El usuario se encuentra inactivo');
+    }
+
+    if (!user.password) {
+      throw new UnauthorizedException('Contraseña incorrecta');
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      throw new UnauthorizedException('Credenciales inválidas');
+      throw new UnauthorizedException('Contraseña incorrecta');
     }
 
     let empresa: Empresa | null = null;
@@ -55,6 +63,7 @@ export class AppController {
       sub: user.id,
       empresa_id: user.empresa_id,
       rol: user.rol,
+      nombre: user.nombre,
     };
     const token = this.jwtService.sign(payload);
 

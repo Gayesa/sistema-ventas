@@ -28,9 +28,9 @@ import { ChangeDetectorRef } from '@angular/core';
         </div>
       </div>
 
-      <!-- KPI Cards -->
+      <!-- 1. KPI Cards (Fila de Métricas Principales) -->
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <!-- Empresas Registradas -->
+        <!-- Empresas Registradas / Total Ventas -->
         <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 hover:shadow-md transition-shadow relative overflow-hidden group">
           <div class="absolute right-0 top-0 w-24 h-24 bg-blue-50 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
           <div class="flex justify-between items-start relative z-10">
@@ -51,7 +51,7 @@ import { ChangeDetectorRef } from '@angular/core';
           </div>
         </div>
 
-        <!-- Administradores -->
+        <!-- Administradores / Total Compras -->
         <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 hover:shadow-md transition-shadow relative overflow-hidden group">
           <div class="absolute right-0 top-0 w-24 h-24 bg-purple-50 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
           <div class="flex justify-between items-start relative z-10">
@@ -110,6 +110,81 @@ import { ChangeDetectorRef } from '@angular/core';
             </div>
             <div class="w-12 h-12 rounded-xl bg-white/10 text-white flex items-center justify-center shadow-inner backdrop-blur-sm border border-white/10">
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Alertas de Stock Bajo / Por Agotarse -->
+      <div *ngIf="productosAgotandose.length > 0" class="mb-6 p-5 bg-gradient-to-r from-rose-500/10 via-amber-500/10 to-orange-500/10 border border-rose-200/80 rounded-2xl shadow-sm">
+        <div class="flex items-center justify-between mb-3.5">
+          <div class="flex items-center gap-3">
+            <div class="p-2 bg-rose-100 text-rose-600 rounded-xl">
+              <svg class="w-6 h-6 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+              </svg>
+            </div>
+            <div>
+              <h4 class="font-bold text-slate-800 text-base">Alertas de Stock Bajo / Por Agotarse</h4>
+              <p class="text-xs text-slate-500">Hay {{ productosAgotandose.length }} producto(s) que han alcanzado o están por debajo de su stock mínimo.</p>
+            </div>
+          </div>
+          <span class="bg-rose-100 text-rose-700 text-xs font-black px-3 py-1 rounded-full border border-rose-200 shadow-2xs">
+            {{ productosAgotandose.length }} por reponer
+          </span>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div *ngFor="let p of productosAgotandose" class="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-sm flex items-center justify-between hover:border-rose-300 transition-colors">
+            <div class="min-w-0 flex-1 pr-2">
+              <p class="text-xs font-bold text-slate-800 truncate">{{ p.nombre }}</p>
+              <p class="text-[11px] text-slate-400 font-mono mt-0.5">{{ p.sku }} · {{ p.categoria }}</p>
+            </div>
+            <div class="text-right flex-shrink-0">
+              <span class="inline-block px-2 py-0.5 rounded text-[10px] font-black uppercase shadow-2xs"
+                    [ngClass]="{
+                      'bg-red-100 text-red-700 border border-red-200': p.nivel === 'AGOTADO',
+                      'bg-rose-100 text-rose-700 border border-rose-200': p.nivel === 'CRITICO',
+                      'bg-amber-100 text-amber-800 border border-amber-200': p.nivel === 'LIMITE'
+                    }">
+                {{ p.nivel === 'AGOTADO' ? '¡AGOTADO!' : (p.nivel === 'CRITICO' ? 'CRÍTICO' : 'STOCK MÍNIMO') }}
+              </span>
+              <p class="text-[11px] font-bold text-slate-600 mt-0.5">
+                <span [class.text-rose-600]="p.stock_actual <= p.stock_minimo">{{ p.stock_actual }} und</span>
+                <span class="text-slate-400 font-normal"> / mín {{ p.stock_minimo }}</span>
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Alertas de Vencimiento de Lotes (FEFO) (Directamente debajo) -->
+      <div *ngIf="alertasVencimiento.length > 0" class="mb-8 p-5 bg-gradient-to-r from-amber-500/10 via-rose-500/10 to-purple-500/10 border border-amber-200/90 rounded-2xl shadow-sm">
+        <div class="flex items-center justify-between mb-3.5">
+          <div class="flex items-center gap-3">
+            <div class="p-2 bg-rose-100 text-rose-600 rounded-xl">
+              <svg class="w-6 h-6 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+            </div>
+            <div>
+              <h4 class="font-bold text-slate-800 text-base">Alertas de Vencimiento de Lotes (FEFO)</h4>
+              <p class="text-xs text-slate-500">Hay {{ alertasVencimiento.length }} lote(s) en estado crítico o próximos a vencer en los próximos 7 días.</p>
+            </div>
+          </div>
+          <span class="bg-rose-100 text-rose-700 text-xs font-black px-3 py-1 rounded-full border border-rose-200 shadow-2xs">
+            {{ alertasVencimiento.length }} en riesgo
+          </span>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div *ngFor="let al of alertasVencimiento" class="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-sm flex items-center justify-between hover:border-amber-300 transition-colors">
+            <div class="min-w-0 flex-1 pr-2">
+              <p class="text-xs font-bold text-slate-800 truncate">{{ al.producto_nombre }}</p>
+              <p class="text-[11px] text-slate-400 font-mono mt-0.5">Lote: {{ al.numero_lote || 'S/N' }} | Stock: {{ al.stock_actual }} und</p>
+            </div>
+            <div class="text-right flex-shrink-0">
+              <span class="inline-block px-2 py-0.5 rounded text-[10px] font-black uppercase shadow-2xs"
+                    [ngClass]="al.nivel_critico === 'VENCIDO' ? 'bg-red-100 text-red-700 border border-red-200' : (al.nivel_critico === 'INMINENTE' ? 'bg-orange-100 text-orange-700 border border-orange-200' : 'bg-yellow-100 text-yellow-800 border border-yellow-200')">
+                {{ al.nivel_critico === 'VENCIDO' ? '¡Vencido!' : al.dias_restantes + ' días' }}
+              </span>
+              <p class="text-[10px] text-slate-400 mt-0.5">{{ al.fecha_vencimiento | date:'dd/MM/yyyy' }}</p>
             </div>
           </div>
         </div>
@@ -273,6 +348,8 @@ export class DashboardAdminComponent implements OnInit {
     ganancias: 0
   };
 
+  alertasVencimiento: any[] = [];
+  productosAgotandose: any[] = [];
   topProductos: any[] = [];
   
   // Paginación y Búsqueda
@@ -431,7 +508,46 @@ export class DashboardAdminComponent implements OnInit {
         },
         error: (err) => console.error('Error fetching top products admin', err)
       });
+
+      this.reportesService.getAlertasVencimientos(7).subscribe({
+        next: (data) => {
+          this.alertasVencimiento = data || [];
+          this.cdr.detectChanges();
+        },
+        error: (err) => console.error('Error fetching alertas vencimientos', err)
+      });
+
+      this.cargarProductosAgotandose();
     }
+  }
+
+  cargarProductosAgotandose() {
+    this.reportesService.getProductos().subscribe({
+      next: (data) => {
+        if (data && Array.isArray(data)) {
+          this.productosAgotandose = data
+            .filter(p => p.is_active !== false)
+            .map(p => {
+              const variante = p.variantes && p.variantes.length > 0 ? p.variantes[0] : null;
+              const stockActual = variante ? Number(variante.stock_actual) : 0;
+              const stockMinimo = variante ? Number(variante.stock_minimo) : 10;
+              return {
+                id: p.id,
+                nombre: p.nombre,
+                sku: variante ? variante.sku : '',
+                categoria: p.categoria?.nombre || p.subcategoria?.nombre || 'General',
+                stock_actual: stockActual,
+                stock_minimo: stockMinimo,
+                nivel: stockActual <= 0 ? 'AGOTADO' : (stockActual < stockMinimo ? 'CRITICO' : 'LIMITE')
+              };
+            })
+            .filter(p => p.stock_actual <= p.stock_minimo)
+            .sort((a, b) => a.stock_actual - b.stock_actual);
+          this.cdr.detectChanges();
+        }
+      },
+      error: (err) => console.error('Error fetching productos agotandose', err)
+    });
   }
 
   // --- EXPORTACIÓN ---

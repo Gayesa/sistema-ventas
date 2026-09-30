@@ -26,6 +26,7 @@ export const routes: Routes = [
       { path: 'inventario-general', loadComponent: () => import('./inventario-general/inventario-general').then(m => m.InventarioGeneralComponent) },
       { path: 'productos', loadComponent: () => import('./productos/productos.component').then(m => m.ProductosComponent) },
       { path: 'proveedores', loadComponent: () => import('./proveedores/proveedores.component').then(m => m.ProveedoresComponent) },
+      { path: 'clientes', loadComponent: () => import('./clientes/clientes.component').then(m => m.ClientesComponent) },
       { path: 'vendedores', loadComponent: () => import('./vendedores/vendedores.component').then(m => m.VendedoresComponent) },
       { path: 'categorias', loadComponent: () => import('./categorias/categorias').then(m => m.CategoriasComponent) },
       { path: 'superadmin/empresas', loadComponent: () => import('./superadmin-empresas/superadmin-empresas.component').then(m => m.SuperadminEmpresasComponent) },

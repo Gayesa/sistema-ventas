@@ -1,8 +1,10 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { Subscription } from 'rxjs';
 import { ExportService } from '../services/export.service';
+import { RefreshService } from '../services/refresh.service';
 import { environment } from '../../environments/environment';
 
 interface Compra {
@@ -29,9 +31,9 @@ interface Compra {
         </div>
         <div class="flex items-center gap-4">
           <div class="flex items-center gap-2 bg-white p-2 rounded-xl border border-slate-200 shadow-sm">
-            <input type="date" [(ngModel)]="fechaInicio" class="border-none bg-transparent text-sm font-medium text-slate-700 focus:ring-0">
+            <input type="date" [(ngModel)]="fechaInicio" (ngModelChange)="onDateChange()" class="border-none bg-transparent text-sm font-medium text-slate-700 focus:ring-0">
             <span class="text-slate-400">a</span>
-            <input type="date" [(ngModel)]="fechaFin" class="border-none bg-transparent text-sm font-medium text-slate-700 focus:ring-0">
+            <input type="date" [(ngModel)]="fechaFin" (ngModelChange)="onDateChange()" class="border-none bg-transparent text-sm font-medium text-slate-700 focus:ring-0">
             <button (click)="cargarCompras()" class="bg-primary hover:bg-indigo-600 text-white p-2 rounded-lg transition-colors" title="Filtrar por fecha">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
             </button>
@@ -94,7 +96,7 @@ interface Compra {
                       <p class="font-bold text-textMain font-mono">{{ compra.numero_factura_proveedor }}</p>
                     </div>
                   </td>
-                  <td class="p-4 text-textSecondary text-sm font-medium">{{ compra.fecha_compra | date:'mediumDate' }}</td>
+                  <td class="p-4 text-textSecondary text-sm font-medium">{{ formatearFecha(compra.fecha_compra) }}</td>
                   <td class="p-4 text-textMain text-sm font-medium">{{ getNombreProveedor(compra.proveedor_id) }}</td>
                   <td class="p-4 text-emerald-600 text-sm font-black text-right">{{ compra.total_compra | currency:'COP':'symbol':'1.0-0' }}</td>
                   <td class="p-4 text-center">
@@ -143,7 +145,7 @@ interface Compra {
                 </td>
               </tr>
             </tbody>
-            <tfoot *ngIf="compras.length > 0" class="bg-slate-50 border-t border-slate-200">
+            <tfoot *ngIf="filteredCompras.length > 0" class="bg-slate-50 border-t border-slate-200">
               <tr>
                 <td colspan="3" class="p-4 text-right font-bold text-textMain uppercase text-xs">Total del Periodo:</td>
                 <td class="p-4 text-right font-black text-primary text-lg">{{ calcularTotalPeriodo() | currency:'COP':'symbol':'1.0-0' }}</td>
@@ -181,7 +183,7 @@ interface Compra {
     </div>
   `
 })
-export class HistorialComprasComponent implements OnInit {
+export class HistorialComprasComponent implements OnInit, OnDestroy {
   compras: Compra[] = [];
   proveedores: any[] = [];
   fechaInicio: string = '';
@@ -191,14 +193,39 @@ export class HistorialComprasComponent implements OnInit {
   itemsPerPage: number = 10;
   currentPage: number = 1;
 
-  constructor(private http: HttpClient, private cdr: ChangeDetectorRef, private exportService: ExportService) {}
+  private refreshSub!: Subscription;
+
+  constructor(
+    private http: HttpClient,
+    private cdr: ChangeDetectorRef,
+    private exportService: ExportService,
+    private refreshService: RefreshService
+  ) {}
 
   ngOnInit() {
     const date = new Date();
-    this.fechaInicio = new Date(date.getFullYear(), date.getMonth(), 1).toISOString().substring(0, 10);
-    this.fechaFin = new Date(date.getFullYear(), date.getMonth() + 1, 0).toISOString().substring(0, 10);
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const primerDia = new Date(year, month, 1);
+    const ultimoDia = new Date(year, month + 1, 0);
+
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    this.fechaInicio = `${primerDia.getFullYear()}-${pad(primerDia.getMonth() + 1)}-${pad(primerDia.getDate())}`;
+    this.fechaFin = `${ultimoDia.getFullYear()}-${pad(ultimoDia.getMonth() + 1)}-${pad(ultimoDia.getDate())}`;
     
     this.cargarProveedores();
+
+    this.refreshSub = this.refreshService.refresh$.subscribe(route => {
+      if (route === '/admin/historial-compras') {
+        this.cargarCompras();
+      }
+    });
+  }
+
+  ngOnDestroy() {
+    if (this.refreshSub) {
+      this.refreshSub.unsubscribe();
+    }
   }
 
   cargarProveedores() {
@@ -213,6 +240,7 @@ export class HistorialComprasComponent implements OnInit {
   }
 
   cargarCompras() {
+    this.currentPage = 1;
     let url = `${environment.apiUrl}/compras`;
     const params = new URLSearchParams();
     if (this.fechaInicio) params.append('fechaInicio', this.fechaInicio);
@@ -228,12 +256,52 @@ export class HistorialComprasComponent implements OnInit {
     });
   }
 
+  onDateChange() {
+    this.currentPage = 1;
+  }
+
   getNombreProveedor(id: string) {
     return this.proveedores.find(p => p.id === id)?.razon_social || id;
   }
 
+  obtenerFechaISO(fechaStr: string): string {
+    if (!fechaStr) return '';
+    if (fechaStr.includes('T00:00:00')) {
+      return fechaStr.substring(0, 10);
+    }
+    const d = new Date(fechaStr);
+    if (isNaN(d.getTime())) return fechaStr.substring(0, 10);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  formatearFecha(fechaStr: string): string {
+    if (!fechaStr) return '';
+    const iso = this.obtenerFechaISO(fechaStr);
+    const partes = iso.split('-');
+    if (partes.length === 3) {
+      const [year, month, day] = partes;
+      return `${day}/${month}/${year}`;
+    }
+    return iso;
+  }
+
   get filteredCompras() {
     let result = this.compras;
+
+    if (this.fechaInicio && this.fechaFin) {
+      result = result.filter(c => {
+        const f = this.obtenerFechaISO(c.fecha_compra);
+        return f >= this.fechaInicio && f <= this.fechaFin;
+      });
+    } else if (this.fechaInicio) {
+      result = result.filter(c => this.obtenerFechaISO(c.fecha_compra) >= this.fechaInicio);
+    } else if (this.fechaFin) {
+      result = result.filter(c => this.obtenerFechaISO(c.fecha_compra) <= this.fechaFin);
+    }
+
     if (this.searchTerm) {
       const term = this.searchTerm.toLowerCase();
       result = result.filter(c => 
@@ -269,11 +337,11 @@ export class HistorialComprasComponent implements OnInit {
   }
 
   exportarExcel() {
-    const dataToExport = this.compras.map(c => {
+    const dataToExport = this.filteredCompras.map(c => {
       const productosStr = c.detalles?.map(d => `${d.producto?.producto?.nombre || 'Producto'} (Cant: ${d.cantidad}, Costo: $ ${Number(d.costo_unitario).toLocaleString('es-CO', { maximumFractionDigits: 0 })})`).join(' | ') || 'Sin detalles';
       return {
         'Nº Factura': c.numero_factura_proveedor,
-        'Fecha Ingreso': new Date(c.fecha_compra).toLocaleDateString(),
+        'Fecha Ingreso': this.formatearFecha(c.fecha_compra),
         'Proveedor': this.getNombreProveedor(c.proveedor_id),
         'Productos': productosStr,
         'Total Compra': c.total_compra
@@ -284,11 +352,9 @@ export class HistorialComprasComponent implements OnInit {
 
   exportarPDF() {
     const columns = ['Nº Factura', 'Fecha Ingreso', 'Proveedor', 'Productos', 'Total Compra'];
-    const dataToExport = this.compras.map(c => {
+    const dataToExport = this.filteredCompras.map(c => {
       const productosStr = c.detalles?.map(d => {
         let nombreProd = d.producto?.producto?.nombre || 'Producto';
-        
-        // Formateo específico solicitado para nombres largos (Ej. separar después de Tipo 2)
         if (nombreProd.includes('Tipo 2 Dorado')) {
           nombreProd = nombreProd.replace('Tipo 2 Dorado', 'Tipo 2\n  Dorado');
         } else if (nombreProd.length > 35) {
@@ -297,24 +363,34 @@ export class HistorialComprasComponent implements OnInit {
             nombreProd = nombreProd.substring(0, splitIndex) + '\n  ' + nombreProd.substring(splitIndex + 1);
           }
         }
-        
         return `- ${nombreProd} (x${d.cantidad})`;
-      }).join('\n\n') || 'Sin detalles';
+      }).join('\n') || 'Sin detalles';
 
       return [
         c.numero_factura_proveedor,
-        new Date(c.fecha_compra).toLocaleDateString(),
+        this.formatearFecha(c.fecha_compra),
         this.getNombreProveedor(c.proveedor_id),
         productosStr,
         `$ ${Number(c.total_compra).toLocaleString('es-CO', { maximumFractionDigits: 0 })}`
       ];
     });
+
+    const totalCompras = this.calcularTotalPeriodo();
+    dataToExport.push([
+      '',
+      '',
+      '',
+      'TOTAL GENERAL:',
+      `$ ${totalCompras.toLocaleString('es-CO', { maximumFractionDigits: 0 })}`
+    ]);
+
     this.exportService.exportarPDF(columns, dataToExport, `Reporte de Compras (${this.fechaInicio} a ${this.fechaFin})`);
   }
 
   exportarFacturaPDF(compra: Compra) {
     const compraConProveedor = {
       ...compra,
+      fecha_formateada: this.formatearFecha(compra.fecha_compra),
       proveedor_nombre: this.getNombreProveedor(compra.proveedor_id)
     };
     this.exportService.exportarFacturaComercialPDF(compraConProveedor);

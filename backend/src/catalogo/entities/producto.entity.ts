@@ -1,6 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
 import { ProductoVariante } from './producto-variante.entity';
 import { Categoria } from './categoria.entity';
+import { InventarioLote } from '../../inventario/entities/inventario-lote.entity';
 
 @Entity('productos')
 export class Producto {
@@ -35,8 +36,17 @@ export class Producto {
   @Column({ type: 'text', nullable: true })
   imagen_url: string;
 
+  @Column({ type: 'boolean', default: false })
+  controla_lotes: boolean;
+
+  @Column('decimal', { precision: 12, scale: 2, default: 0 })
+  stock_total: number;
+
   @OneToMany(() => ProductoVariante, (variante) => variante.producto)
   variantes: ProductoVariante[];
+
+  @OneToMany(() => InventarioLote, (lote) => lote.producto)
+  lotes: InventarioLote[];
 
   @Column({ type: 'boolean', default: true })
   is_active: boolean;

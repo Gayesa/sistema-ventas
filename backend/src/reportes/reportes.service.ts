@@ -6,6 +6,7 @@ import { DetalleVenta } from '../ventas/entities/detalle-venta.entity';
 import { Empresa } from '../empresas/entities/empresa.entity';
 import { Usuario } from '../usuarios/entities/usuario.entity';
 import { Compra } from '../compras/entities/compra.entity';
+import { InventarioLote } from '../inventario/entities/inventario-lote.entity';
 
 @Injectable()
 export class ReportesService {
@@ -20,6 +21,8 @@ export class ReportesService {
     private readonly usuarioRepository: Repository<Usuario>,
     @InjectRepository(Compra)
     private readonly compraRepository: Repository<Compra>,
+    @InjectRepository(InventarioLote)
+    private readonly inventarioLoteRepository: Repository<InventarioLote>,
   ) {}
 
   async obtenerCierreCaja(empresaId: string, fecha: string) {
@@ -189,5 +192,56 @@ export class ReportesService {
     }
 
     return await query.getMany();
+  }
+
+  /**
+   * Retorna lotes activos (stock_actual > 0) cuya fecha de vencimiento esté a 7 días o menos de la fecha actual,
+   * ordenados del más crítico al menos crítico (fecha_vencimiento ASC).
+   */
+  async obtenerAlertasVencimientos(empresaId: string, diasVentana: number = 7) {
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+
+    const fechaLimite = new Date(hoy);
+    fechaLimite.setDate(fechaLimite.getDate() + diasVentana);
+    fechaLimite.setHours(23, 59, 59, 999);
+
+    const fechaLimiteStr = fechaLimite.toISOString().split('T')[0];
+
+    const lotes = await this.inventarioLoteRepository
+      .createQueryBuilder('lote')
+      .innerJoinAndSelect('lote.producto', 'producto')
+      .where('lote.empresa_id = :empresaId', { empresaId })
+      .andWhere('lote.stock_actual > 0')
+      .andWhere('lote.fecha_vencimiento <= :fechaLimite', { fechaLimite: fechaLimiteStr })
+      .orderBy('lote.fecha_vencimiento', 'ASC')
+      .addOrderBy('lote.stock_actual', 'DESC')
+      .getMany();
+
+    return lotes.map((lote) => {
+      const fechaVenc = new Date(lote.fecha_vencimiento);
+      const diffTime = fechaVenc.getTime() - hoy.getTime();
+      const diasRestantes = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      let nivelCritico: 'VENCIDO' | 'INMINENTE' | 'ALERTA';
+      if (diasRestantes < 0) {
+        nivelCritico = 'VENCIDO';
+      } else if (diasRestantes <= 3) {
+        nivelCritico = 'INMINENTE';
+      } else {
+        nivelCritico = 'ALERTA';
+      }
+
+      return {
+        id: lote.id,
+        producto_id: lote.producto_id,
+        producto_nombre: lote.producto?.nombre,
+        numero_lote: lote.numero_lote,
+        fecha_vencimiento: lote.fecha_vencimiento,
+        stock_actual: Number(lote.stock_actual),
+        dias_restantes: diasRestantes,
+        nivel_critico: nivelCritico,
+      };
+    });
   }
 }

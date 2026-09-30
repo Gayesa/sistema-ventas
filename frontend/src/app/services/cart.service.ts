@@ -68,6 +68,10 @@ export class CartService {
     return this.calcularSubtotal() * tasa;
   }
 
+  contarArticulos(): number {
+    return this.carrito.getValue().reduce((acc, item) => acc + item.cantidad, 0);
+  }
+
   calcularTotal(): number {
     return this.calcularSubtotal() + this.calcularImpuestos();
   }

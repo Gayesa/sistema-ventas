@@ -64,7 +64,8 @@ export class ProductosService {
       unidad_medida: data.unidad_medida || 'Unidad',
       imagen_url: data.foto_url || null,
       is_active: data.is_active !== undefined ? data.is_active : true,
-      es_compuesto: false
+      es_compuesto: false,
+      controla_lotes: Boolean(data.controla_lotes),
     });
     const savedProducto = await this.productosRepo.save(producto);
 
@@ -93,7 +94,8 @@ export class ProductosService {
         variantes: true,
         categoria: {
           parent: true
-        }
+        },
+        lotes: true
       },
       order: { created_at: 'DESC' }
     });
@@ -139,7 +141,8 @@ export class ProductosService {
         variantes: true,
         categoria: {
           parent: true
-        }
+        },
+        lotes: true
       }
     });
     if (!producto) throw new NotFoundException(`Producto con ID ${id} no encontrado`);
@@ -161,8 +164,8 @@ export class ProductosService {
         dc.costo_unitario as valor_unitario,
         dc.subtotal as total
       FROM detalle_compra dc
-      JOIN compra c ON c.id::varchar = dc.compra_id
-      WHERE dc.producto_id = $1 AND c.empresa_id = $2
+      JOIN compra c ON c.id::text = dc.compra_id::text
+      WHERE dc.producto_id::text = $1::text AND c.empresa_id::text = $2::text
       ORDER BY c.fecha_compra DESC
     `, [variante.id, empresa_id]);
 
@@ -173,10 +176,11 @@ export class ProductosService {
         v.fecha as fecha,
         dv.cantidad as cantidad,
         dv.precio_unitario as valor_unitario,
-        dv.subtotal as total
+        dv.subtotal as total,
+        v.vendedor as vendedor
       FROM detalles_venta dv
-      JOIN ventas v ON v.id = dv.venta_id
-      WHERE dv.variante_id = $1 AND v.empresa_id = $2
+      JOIN ventas v ON v.id::text = dv.venta_id::text
+      WHERE dv.variante_id::text = $1::text AND v.empresa_id::text = $2::text
       ORDER BY v.fecha DESC
     `, [variante.id, empresa_id]);
 
@@ -216,6 +220,7 @@ export class ProductosService {
     if (data.unidad_medida !== undefined) producto.unidad_medida = data.unidad_medida;
     if (data.is_active !== undefined) producto.is_active = data.is_active;
     if (data.proveedor_id !== undefined) producto.proveedor_id = data.proveedor_id || null;
+    if (data.controla_lotes !== undefined) producto.controla_lotes = Boolean(data.controla_lotes);
 
     await this.productosRepo.save(producto);
 

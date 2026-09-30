@@ -1,4 +1,4 @@
-import { Component, HostListener, OnInit } from '@angular/core';
+import { Component, HostListener, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -25,7 +25,8 @@ export class PosLayoutComponent implements OnInit {
     public cartService: CartService,
     private router: Router,
     private exportService: ExportService,
-    private http: HttpClient
+    private http: HttpClient,
+    private cdr: ChangeDetectorRef
   ) {
     this.carrito$ = this.cartService.carrito$;
   }
@@ -70,6 +71,12 @@ export class PosLayoutComponent implements OnInit {
   
   @HostListener('window:keypress', ['$event'])
   handleKeyboardEvent(event: KeyboardEvent) {
+    // Si el usuario está escribiendo en un input, textarea o select, ignorar captura global del escáner
+    const target = event.target as HTMLElement;
+    if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT')) {
+      return;
+    }
+
     if (event.key === 'Enter') {
       if (this.scannedCode) {
         this.processScannedCode(this.scannedCode);
@@ -132,9 +139,15 @@ export class PosLayoutComponent implements OnInit {
     
     let ef = 0; let ta = 0; let ne = 0;
     ventas.forEach((v: any) => {
-      if(v.metodo === 'EFECTIVO') ef += v.total;
-      if(v.metodo === 'TARJETA') ta += v.total;
-      if(v.metodo === 'NEQUI') ne += v.total;
+      if (v.desglose_pagos) {
+        ef += Number(v.desglose_pagos.efectivo || 0);
+        ta += Number(v.desglose_pagos.tarjeta || 0);
+        ne += Number(v.desglose_pagos.nequi || 0);
+      } else {
+        if(v.metodo === 'EFECTIVO') ef += Number(v.total || 0);
+        if(v.metodo === 'TARJETA') ta += Number(v.total || 0);
+        if(v.metodo === 'NEQUI') ne += Number(v.total || 0);
+      }
     });
 
     const baseCaja = parseFloat(localStorage.getItem('base_caja') || '0');
@@ -158,8 +171,6 @@ export class PosLayoutComponent implements OnInit {
   }
 
   procesarCierreZ() {
-    // Aquí iría el POST /api/ventas/cierre-z
-    
     // Generar e Imprimir PDF
     this.exportService.exportarCierreZPDF(this.totalesCierreZ);
 
@@ -173,7 +184,7 @@ export class PosLayoutComponent implements OnInit {
     setTimeout(() => {
       this.modalCierreZVisible = false;
       this.cierreZExito = false;
-      this.logout(); // Opcional: desconectar al usuario tras el cierre
+      this.logout();
     }, 3000);
   }
 
@@ -195,9 +206,15 @@ export class PosLayoutComponent implements OnInit {
 
     let ef = 0; let ta = 0; let ne = 0;
     this.ventasDelTurno.forEach((v: any) => {
-      if(v.metodo === 'EFECTIVO') ef += v.total;
-      if(v.metodo === 'TARJETA') ta += v.total;
-      if(v.metodo === 'NEQUI') ne += v.total;
+      if (v.desglose_pagos) {
+        ef += Number(v.desglose_pagos.efectivo || 0);
+        ta += Number(v.desglose_pagos.tarjeta || 0);
+        ne += Number(v.desglose_pagos.nequi || 0);
+      } else {
+        if(v.metodo === 'EFECTIVO') ef += Number(v.total || 0);
+        if(v.metodo === 'TARJETA') ta += Number(v.total || 0);
+        if(v.metodo === 'NEQUI') ne += Number(v.total || 0);
+      }
     });
 
     this.totalesReporteX = {
@@ -216,7 +233,6 @@ export class PosLayoutComponent implements OnInit {
   }
 
   exportarReporteX() {
-    // Usamos el mismo diseño del PDF del Cierre Z, pero indicando que es Reporte X
     this.exportService.exportarReporteXPDF(this.totalesReporteX);
     this.modalReporteXVisible = false;
   }
@@ -228,8 +244,26 @@ export class PosLayoutComponent implements OnInit {
   dineroRecibido: number = 0;
   ventaProcesadaExito: boolean = false;
 
+  // Variables específicas para Pago Mixto / Combinado
+  montoEfectivo: number = 0;
+  montoTarjeta: number = 0;
+  montoNequi: number = 0;
+  dineroRecibidoEfectivoMixto: number = 0;
+
   saldoAFavorTotal: number = 0;
   usarSaldoAFavor: boolean = false;
+
+  // --- CLIENTE EN VENTA ---
+  busquedaClienteCedula: string = '';
+  buscandoCliente: boolean = false;
+  clienteSeleccionado: any = null;
+  mensajeBusquedaCliente: string | null = null;
+  tipoMensajeCliente: 'success' | 'warning' | 'error' = 'success';
+
+  // Última venta procesada (para Factura PDF y WhatsApp)
+  ultimaVentaRealizada: any = null;
+  ultimoCliente: any = null;
+  enlaceWhatsApp: string | null = null;
 
   abrirModalCobro() {
     this.modalCobroVisible = true;
@@ -238,17 +272,157 @@ export class PosLayoutComponent implements OnInit {
     this.usarSaldoAFavor = false;
     this.dineroRecibido = this.totalAPagarFinal; // Por defecto sugerimos monto exacto
     this.ventaProcesadaExito = false;
+    this.buscandoCliente = false;
+    this.mensajeBusquedaCliente = null;
+    this.limpiarMontosMixtos();
+    this.cdr.detectChanges();
   }
 
   cerrarModalCobro() {
     this.modalCobroVisible = false;
+    this.buscandoCliente = false;
+    if (this.ventaProcesadaExito) {
+      this.finalizarVentaYLimpiar();
+    }
+    this.cdr.detectChanges();
+  }
+
+  buscarClientePorCedula() {
+    const cedula = this.busquedaClienteCedula ? this.busquedaClienteCedula.trim() : '';
+    if (!cedula) {
+      this.mensajeBusquedaCliente = 'Ingresa un número de cédula para buscar.';
+      this.tipoMensajeCliente = 'warning';
+      this.cdr.detectChanges();
+      return;
+    }
+
+    this.buscandoCliente = true;
+    this.mensajeBusquedaCliente = null;
+    this.cdr.detectChanges();
+
+    this.http.get<any[]>(`${environment.apiUrl}/clientes`).subscribe({
+      next: (clientes) => {
+        this.buscandoCliente = false;
+        const lista = Array.isArray(clientes) ? clientes : [];
+        const encontrado = lista.find(c => String(c.cedula || '').trim().toLowerCase() === cedula.toLowerCase());
+        
+        if (encontrado) {
+          if (!encontrado.is_active) {
+            this.clienteSeleccionado = null;
+            this.mensajeBusquedaCliente = `El cliente ${encontrado.nombres} ${encontrado.apellidos} está inactivo.`;
+            this.tipoMensajeCliente = 'error';
+          } else {
+            this.clienteSeleccionado = encontrado;
+            this.mensajeBusquedaCliente = `Cliente vinculado: ${encontrado.nombres} ${encontrado.apellidos}`;
+            this.tipoMensajeCliente = 'success';
+          }
+        } else {
+          this.clienteSeleccionado = null;
+          this.mensajeBusquedaCliente = `No existe ningún cliente registrado con la cédula "${cedula}". La venta se procesará como Consumidor Final.`;
+          this.tipoMensajeCliente = 'warning';
+        }
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        this.buscandoCliente = false;
+        console.error('Error buscando cliente:', err);
+        const errMsg = err.error?.message || 'Error al consultar la base de datos de clientes.';
+        this.mensajeBusquedaCliente = typeof errMsg === 'string' ? errMsg : 'Error al consultar el cliente.';
+        this.tipoMensajeCliente = 'error';
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  quitarCliente() {
+    this.clienteSeleccionado = null;
+    this.busquedaClienteCedula = '';
+    this.mensajeBusquedaCliente = null;
+    this.buscandoCliente = false;
+    this.cdr.detectChanges();
+  }
+
+  imprimirFacturaUltimaVenta() {
+    if (this.ultimaVentaRealizada) {
+      this.exportService.exportarFacturaVentaPDF(this.ultimaVentaRealizada, this.ultimoCliente);
+    }
+  }
+
+  enviarWhatsAppUltimaVenta() {
+    if (this.enlaceWhatsApp) {
+      window.open(this.enlaceWhatsApp, '_blank');
+    }
+  }
+
+  finalizarVentaYLimpiar() {
+    this.cartService.vaciarCarrito();
+    this.modalCobroVisible = false;
+    this.ventaProcesadaExito = false;
+    this.limpiarMontosMixtos();
+    this.clienteSeleccionado = null;
+    this.busquedaClienteCedula = '';
+    this.mensajeBusquedaCliente = null;
+    this.ultimaVentaRealizada = null;
+    this.ultimoCliente = null;
+    this.enlaceWhatsApp = null;
   }
 
   seleccionarMetodo(metodo: string) {
     this.metodoPagoSeleccionado = metodo;
-    if (metodo !== 'EFECTIVO') {
+    if (metodo === 'MIXTO') {
+      this.limpiarMontosMixtos();
+    } else if (metodo !== 'EFECTIVO') {
+      this.dineroRecibido = this.totalAPagarFinal;
+    } else {
       this.dineroRecibido = this.totalAPagarFinal;
     }
+  }
+
+  // --- MÉTODOS Y GETTERS PARA PAGO MIXTO ---
+  get totalPagadoMixto(): number {
+    return (Number(this.montoEfectivo) || 0) + (Number(this.montoTarjeta) || 0) + (Number(this.montoNequi) || 0);
+  }
+
+  get faltanteMixto(): number {
+    const diff = this.totalAPagarFinal - this.totalPagadoMixto;
+    return diff > 0 ? diff : 0;
+  }
+
+  get excedenteMixto(): number {
+    const diff = this.totalPagadoMixto - this.totalAPagarFinal;
+    return diff > 0 ? diff : 0;
+  }
+
+  get cambioEfectivoMixto(): number {
+    if ((Number(this.montoEfectivo) || 0) <= 0) return 0;
+    const entregado = Number(this.dineroRecibidoEfectivoMixto) || Number(this.montoEfectivo);
+    const diff = entregado - Number(this.montoEfectivo);
+    return diff > 0 ? diff : 0;
+  }
+
+  asignarRestante(metodo: 'EFECTIVO' | 'TARJETA' | 'NEQUI') {
+    const restante = this.faltanteMixto;
+    if (restante <= 0) return;
+
+    if (metodo === 'EFECTIVO') {
+      this.montoEfectivo = (Number(this.montoEfectivo) || 0) + restante;
+      this.dineroRecibidoEfectivoMixto = this.montoEfectivo;
+    } else if (metodo === 'TARJETA') {
+      this.montoTarjeta = (Number(this.montoTarjeta) || 0) + restante;
+    } else if (metodo === 'NEQUI') {
+      this.montoNequi = (Number(this.montoNequi) || 0) + restante;
+    }
+  }
+
+  limpiarMontosMixtos() {
+    this.montoEfectivo = 0;
+    this.montoTarjeta = 0;
+    this.montoNequi = 0;
+    this.dineroRecibidoEfectivoMixto = 0;
+  }
+
+  establecerEfectivoRapido(monto: number) {
+    this.dineroRecibido = monto;
   }
 
   get totalAPagarFinal(): number {
@@ -262,6 +436,9 @@ export class PosLayoutComponent implements OnInit {
   toggleSaldoAFavor() {
     this.usarSaldoAFavor = !this.usarSaldoAFavor;
     this.dineroRecibido = this.totalAPagarFinal;
+    if (this.metodoPagoSeleccionado === 'MIXTO') {
+      this.limpiarMontosMixtos();
+    }
   }
 
   get cambio(): number {
@@ -276,9 +453,24 @@ export class PosLayoutComponent implements OnInit {
   }
 
   procesarVenta() {
-    if (this.faltante > 0 && this.metodoPagoSeleccionado === 'EFECTIVO') {
-      alert('El dinero recibido es menor al total a pagar.');
-      return;
+    if (this.metodoPagoSeleccionado === 'EFECTIVO') {
+      if (this.faltante > 0) {
+        alert('El dinero recibido es menor al total a pagar.');
+        return;
+      }
+    } else if (this.metodoPagoSeleccionado === 'MIXTO') {
+      if (this.totalPagadoMixto !== this.totalAPagarFinal) {
+        if (this.faltanteMixto > 0) {
+          alert(`Falta asignar $${this.faltanteMixto.toLocaleString('es-CO')} para completar el total de la venta.`);
+        } else {
+          alert(`La suma asignada ($${this.totalPagadoMixto.toLocaleString('es-CO')}) excede el total a pagar.`);
+        }
+        return;
+      }
+      if (this.montoEfectivo > 0 && this.dineroRecibidoEfectivoMixto < this.montoEfectivo) {
+        alert('El dinero recibido en efectivo es menor al monto asignado para pago en efectivo.');
+        return;
+      }
     }
 
     // Procesar directamente sin mostrar el modal de confirmación (un solo clic)
@@ -291,9 +483,6 @@ export class PosLayoutComponent implements OnInit {
 
   procesarVentaDefinitiva() {
     this.modalConfirmacionVentaVisible = false;
-    this.ventaProcesadaExito = true;
-    
-    const token = localStorage.getItem('token');
     
     // Preparar el payload
     let detalles: any[] = [];
@@ -306,52 +495,130 @@ export class PosLayoutComponent implements OnInit {
       }));
     }).unsubscribe();
 
+    if (detalles.length === 0) {
+      alert('El carrito de compras está vacío.');
+      return;
+    }
+
+    let metodoFinal = this.metodoPagoSeleccionado;
+    let desglose: any = null;
+
+    if (this.metodoPagoSeleccionado === 'MIXTO') {
+      const partes: string[] = [];
+      if (this.montoEfectivo > 0) partes.push(`Efectivo: $${Number(this.montoEfectivo).toLocaleString('es-CO')}`);
+      if (this.montoTarjeta > 0) partes.push(`Tarjeta: $${Number(this.montoTarjeta).toLocaleString('es-CO')}`);
+      if (this.montoNequi > 0) partes.push(`Nequi: $${Number(this.montoNequi).toLocaleString('es-CO')}`);
+      metodoFinal = `MIXTO (${partes.join(', ')})`;
+      desglose = {
+        tipo: 'MIXTO',
+        efectivo: Number(this.montoEfectivo) || 0,
+        tarjeta: Number(this.montoTarjeta) || 0,
+        nequi: Number(this.montoNequi) || 0,
+        dinero_recibido_efectivo: Number(this.dineroRecibidoEfectivoMixto) || Number(this.montoEfectivo) || 0,
+        cambio: this.cambioEfectivoMixto
+      };
+    } else {
+      desglose = {
+        tipo: this.metodoPagoSeleccionado,
+        efectivo: this.metodoPagoSeleccionado === 'EFECTIVO' ? this.totalAPagarFinal : 0,
+        tarjeta: this.metodoPagoSeleccionado === 'TARJETA' ? this.totalAPagarFinal : 0,
+        nequi: this.metodoPagoSeleccionado === 'NEQUI' ? this.totalAPagarFinal : 0,
+        dinero_recibido_efectivo: this.metodoPagoSeleccionado === 'EFECTIVO' ? Number(this.dineroRecibido) : 0,
+        cambio: this.cambio
+      };
+    }
+
     const payload = {
-      metodo_pago: this.metodoPagoSeleccionado,
+      metodo_pago: this.metodoPagoSeleccionado === 'MIXTO' ? 'MIXTO' : this.metodoPagoSeleccionado,
       total: this.totalAPagarFinal,
-      detalles: detalles
+      detalles: detalles,
+      pagos_detalle: desglose,
+      cliente_id: this.clienteSeleccionado ? this.clienteSeleccionado.id : null,
+      cliente_datos: this.clienteSeleccionado ? {
+        id: this.clienteSeleccionado.id,
+        cedula: this.clienteSeleccionado.cedula,
+        nombres: this.clienteSeleccionado.nombres,
+        apellidos: this.clienteSeleccionado.apellidos,
+        telefono: this.clienteSeleccionado.telefono || null,
+        email: this.clienteSeleccionado.email || null,
+        direccion: this.clienteSeleccionado.direccion || null
+      } : null,
+      vendedor: localStorage.getItem('name') || 'Vendedor'
     };
 
     // Llamada al backend POST /api/ventas
     this.http.post(`${environment.apiUrl}/ventas`, payload).subscribe({
       next: (res: any) => {
+        this.ventaProcesadaExito = true;
+
+        const ticketGenerado = res.venta?.numero_ticket || `TKT-${Date.now()}`;
+        const ventaGuardada = res.venta || {
+          numero_ticket: ticketGenerado,
+          fecha: new Date(),
+          metodo_pago: this.metodoPagoSeleccionado,
+          total: this.totalAPagarFinal,
+          vendedor: localStorage.getItem('name') || 'Vendedor'
+        };
+
+        this.ultimaVentaRealizada = {
+          ...ventaGuardada,
+          numero_ticket: ticketGenerado,
+          detalles: detalles,
+          pagos_detalle: desglose,
+          total: this.totalAPagarFinal,
+          metodo_pago: metodoFinal,
+          cliente_datos: payload.cliente_datos
+        };
+        this.ultimoCliente = this.clienteSeleccionado ? { ...this.clienteSeleccionado } : null;
+
+        if (this.ultimoCliente && this.ultimoCliente.telefono) {
+          const resWa = this.exportService.generarEnlaceWhatsAppVenta(this.ultimaVentaRealizada, this.ultimoCliente);
+          this.enlaceWhatsApp = resWa.url;
+        } else {
+          this.enlaceWhatsApp = null;
+        }
+
         // Cargar ventas previas de esta sesión simulada para Reporte X y Cierre Z
         const ventasStorage = localStorage.getItem('ventas_turno_mock');
         if (ventasStorage) {
           this.ventasDelTurno = JSON.parse(ventasStorage);
         }
 
-        const horaActual = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        const horaActual = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         
         this.ventasDelTurno.push({
-          ticket: res.venta?.numero_ticket || `TKT-${Date.now()}`,
+          ticket: ticketGenerado,
           hora: horaActual,
           metodo: this.metodoPagoSeleccionado,
+          metodo_detalle: metodoFinal,
+          desglose_pagos: desglose,
           total: this.totalAPagarFinal,
+          cliente: this.ultimoCliente ? `${this.ultimoCliente.nombres} ${this.ultimoCliente.apellidos}` : 'Consumidor Final',
           productos: detalles.map(d => `${d.nombre} (x${d.cantidad})`).join(', ')
         });
         
         localStorage.setItem('ventas_turno_mock', JSON.stringify(this.ventasDelTurno));
         
-        // Notify ventas component to refresh products
+        // Si se usó saldo a favor, descontarlo del storage
+        if (this.usarSaldoAFavor) {
+          const descuentoAplicado = Math.min(this.cartService.calcularTotal(), this.saldoAFavorTotal);
+          const nuevoSaldo = this.saldoAFavorTotal - descuentoAplicado;
+          localStorage.setItem('saldo_a_favor', nuevoSaldo.toString());
+          this.saldoAFavorTotal = nuevoSaldo;
+        }
+
+        // Notificar al componente de ventas para refrescar catálogo y stock
         this.cartService.notificarVentaCompletada();
+
+        // Vaciar carrito
+        this.cartService.vaciarCarrito();
       },
-      error: (err) => console.error('Error al registrar venta:', err)
+      error: (err) => {
+        console.error('Error al registrar venta:', err);
+        const backendMsg = err.error?.message;
+        const msg = Array.isArray(backendMsg) ? backendMsg.join(', ') : (backendMsg || 'Error al procesar la venta');
+        alert(`No se pudo procesar la venta: ${msg}`);
+      }
     });
-
-    // Si se usó saldo a favor, descontarlo del storage
-    if (this.usarSaldoAFavor) {
-      const descuentoAplicado = Math.min(this.cartService.calcularTotal(), this.saldoAFavorTotal);
-      const nuevoSaldo = this.saldoAFavorTotal - descuentoAplicado;
-      localStorage.setItem('saldo_a_favor', nuevoSaldo.toString());
-      this.saldoAFavorTotal = nuevoSaldo;
-    }
-
-    // Simular tiempo de impresión o proceso
-    setTimeout(() => {
-      this.cartService.vaciarCarrito();
-      this.modalCobroVisible = false;
-      this.ventaProcesadaExito = false;
-    }, 2500);
   }
 }

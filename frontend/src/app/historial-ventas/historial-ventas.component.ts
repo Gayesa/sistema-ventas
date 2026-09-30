@@ -16,6 +16,9 @@ interface VentaResumen {
   metodo_pago: string;
   estado: string; // COMPLETADA, ANULADA
   detalles: any[];
+  pagos_detalle?: any;
+  cliente_id?: string;
+  cliente_datos?: any;
   expandido?: boolean;
 }
 
@@ -120,7 +123,7 @@ interface VentaResumen {
           <table class="w-full text-left border-collapse">
             <thead class="sticky top-0 bg-slate-50 z-10">
               <tr class="border-b border-slate-200 text-xs text-slate-500 uppercase tracking-wider shadow-sm">
-                <th class="p-4 font-bold">Ticket</th>
+                <th class="p-4 font-bold">Ticket / Cliente</th>
                 <th class="p-4 font-bold">Fecha de Venta</th>
                 <th class="p-4 font-bold">Método de Pago</th>
                 <th class="p-4 font-bold">Vendedor</th>
@@ -136,7 +139,16 @@ interface VentaResumen {
                       <div class="w-8 h-8 rounded-lg bg-indigo-50 flex-shrink-0 flex items-center justify-center text-primary">
                         <svg class="w-4 h-4 transition-transform" [class.rotate-90]="venta.expandido" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                       </div>
-                      <p class="font-bold text-slate-800 font-mono">{{ venta.numero_ticket }}</p>
+                      <div>
+                        <p class="font-bold text-slate-800 font-mono">{{ venta.numero_ticket }}</p>
+                        <p *ngIf="venta.cliente_datos" class="text-xs font-semibold text-emerald-700 flex items-center gap-1 mt-0.5">
+                          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                          {{ venta.cliente_datos.nombres }} {{ venta.cliente_datos.apellidos }}
+                        </p>
+                        <p *ngIf="!venta.cliente_datos" class="text-[11px] text-slate-400 italic mt-0.5">
+                          Consumidor Final
+                        </p>
+                      </div>
                     </div>
                   </td>
                   <td class="p-4 text-slate-600 text-sm font-medium">{{ venta.fecha | date:'short' }}</td>
@@ -168,6 +180,30 @@ interface VentaResumen {
                 <tr *ngIf="venta.expandido" class="bg-slate-50/50 shadow-inner">
                   <td colspan="6" class="p-6 border-t border-slate-100">
                     <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                      <!-- Cabecera de Detalle: Cliente y Acciones Rápidas -->
+                      <div class="p-3.5 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                        <div class="text-xs">
+                          <span class="font-bold text-slate-400 uppercase tracking-wider block text-[10px]">Cliente de la Factura:</span>
+                          <span *ngIf="venta.cliente_datos" class="font-bold text-slate-800">
+                            {{ venta.cliente_datos.nombres }} {{ venta.cliente_datos.apellidos }} 
+                            <span class="font-mono text-slate-600 font-normal ml-1">• C.C. {{ venta.cliente_datos.cedula }}</span>
+                            <span *ngIf="venta.cliente_datos.telefono" class="text-emerald-700 font-semibold ml-2">📱 {{ venta.cliente_datos.telefono }}</span>
+                          </span>
+                          <span *ngIf="!venta.cliente_datos" class="text-slate-400 italic">
+                            Consumidor Final (Sin cliente registrado)
+                          </span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                          <button (click)="$event.stopPropagation(); imprimirFactura(venta)" class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer" title="Descargar Factura en PDF">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                            Factura PDF
+                          </button>
+                          <button *ngIf="venta.cliente_datos?.telefono" (click)="$event.stopPropagation(); enviarWhatsApp(venta)" class="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer" title="Reenviar a WhatsApp">
+                            <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
+                            WhatsApp
+                          </button>
+                        </div>
+                      </div>
                       <table class="w-full text-left">
                         <thead class="bg-slate-100/50 border-b border-slate-200">
                           <tr>
@@ -395,8 +431,14 @@ export class HistorialVentasComponent implements OnInit {
   totalesReporteX: any = {};
 
   abrirModalReporteX() {
-    const hoy = new Date().toISOString().substring(0, 10);
-    const ventasHoy = this.ventas.filter(v => v.fecha.startsWith(hoy) && v.estado === 'COMPLETADA');
+    const d = new Date();
+    const hoy = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const ventasHoy = this.ventas.filter(v => {
+      if (v.estado !== 'COMPLETADA' || !v.fecha) return false;
+      const f = new Date(v.fecha);
+      const vFechaLocal = `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`;
+      return vFechaLocal === hoy;
+    });
 
     let ef = 0; let ta = 0; let ne = 0;
     
@@ -438,12 +480,28 @@ export class HistorialVentasComponent implements OnInit {
     return this.getVentasFiltradas().reduce((sum, v) => sum + (v.estado === 'COMPLETADA' ? Number(v.total) : 0), 0);
   }
 
+  imprimirFactura(venta: VentaResumen) {
+    this.exportService.exportarFacturaVentaPDF(venta, venta.cliente_datos);
+  }
+
+  enviarWhatsApp(venta: VentaResumen) {
+    if (venta.cliente_datos && venta.cliente_datos.telefono) {
+      const wa = this.exportService.generarEnlaceWhatsAppVenta(venta, venta.cliente_datos);
+      if (wa.url) {
+        window.open(wa.url, '_blank');
+      }
+    } else {
+      this.mostrarToast('Esta venta no tiene un cliente con teléfono registrado.', 'error');
+    }
+  }
+
   exportarPDF() {
-    const columns = ['Ticket', 'Fecha', 'Método', 'Vendedor', 'Productos', 'Total'];
-    const dataToExport = this.ventas.map(v => {
-      const productosStr = v.detalles.map(d => `- ${d.nombre_producto} (x${d.cantidad})`).join('\\n');
+    const columns = ['Ticket', 'Cliente', 'Fecha', 'Método', 'Vendedor', 'Productos', 'Total'];
+    const dataToExport = this.getVentasFiltradas().map(v => {
+      const productosStr = v.detalles.map(d => `- ${d.nombre_producto} (x${d.cantidad})`).join('\n');
       return [
         v.numero_ticket,
+        (v.cliente_datos ? `${v.cliente_datos.nombres} ${v.cliente_datos.apellidos}\n(C.C. ${v.cliente_datos.cedula})` : 'Consumidor Final'),
         new Date(v.fecha).toLocaleDateString(),
         v.metodo_pago,
         v.vendedor,
@@ -454,6 +512,7 @@ export class HistorialVentasComponent implements OnInit {
 
     const totalIngresos = this.calcularIngresos();
     dataToExport.push([
+      '',
       '',
       '',
       '',
@@ -483,7 +542,10 @@ export class HistorialVentasComponent implements OnInit {
       filtrado = filtrado.filter(v => 
         (v.numero_ticket && v.numero_ticket.toLowerCase().includes(term)) ||
         (v.vendedor && v.vendedor.toLowerCase().includes(term)) ||
-        (v.metodo_pago && v.metodo_pago.toLowerCase().includes(term))
+        (v.metodo_pago && v.metodo_pago.toLowerCase().includes(term)) ||
+        (v.cliente_datos?.nombres && v.cliente_datos.nombres.toLowerCase().includes(term)) ||
+        (v.cliente_datos?.apellidos && v.cliente_datos.apellidos.toLowerCase().includes(term)) ||
+        (v.cliente_datos?.cedula && String(v.cliente_datos.cedula).includes(term))
       );
     }
     return filtrado;

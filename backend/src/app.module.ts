@@ -11,6 +11,7 @@ import { ComprasModule } from './compras/compras.module';
 import { UsuariosModule } from './usuarios/usuarios.module';
 import { EmpresasModule } from './empresas/empresas.module';
 import { ProveedoresModule } from './proveedores/proveedores.module';
+import { ClientesModule } from './clientes/clientes.module';
 import { VentasModule } from './ventas/ventas.module';
 import { HealthModule } from './health/health.module';
 import { UploadModule } from './upload/upload.module';
@@ -101,6 +102,7 @@ import * as Joi from 'joi';
     UsuariosModule,
     EmpresasModule,
     ProveedoresModule,
+    ClientesModule,
     VentasModule,
     UploadModule,
 

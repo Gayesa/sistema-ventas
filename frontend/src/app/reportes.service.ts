@@ -38,4 +38,12 @@ export class ReportesService {
   getSuperAdminFinanzasGlobales(): Observable<any[]> {
     return this.http.get<any[]>(`${this.API_URL}/superadmin/finanzas-globales`);
   }
+
+  getAlertasVencimientos(dias: number = 7): Observable<any[]> {
+    return this.http.get<any[]>(`${this.API_URL}/alertas/vencimientos?dias=${dias}`);
+  }
+
+  getProductos(): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.apiUrl}/productos`);
+  }
 }

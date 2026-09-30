@@ -2,7 +2,7 @@ import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 't
 import { Compra } from './compra.entity';
 import { ProductoVariante } from '../../catalogo/entities/producto-variante.entity';
 
-@Entity()
+@Entity('detalle_compra')
 export class DetalleCompra {
   @PrimaryGeneratedColumn('uuid') id: string;
   @Column({ type: 'uuid' }) compra_id: string;

@@ -36,7 +36,7 @@ export class AuthService {
     }
   }
 
-  login(credentials: { email: string, password: string }): Observable<boolean> {
+  login(credentials: { email: string, password: string }): Observable<{ success: boolean; message?: string }> {
     // All authentication goes through the backend — no hardcoded credentials
     return this.http.post<any>(`${environment.apiUrl}/auth/login`, credentials).pipe(
       map(response => {
@@ -57,13 +57,19 @@ export class AuthService {
           } else {
             this.router.navigate(['/admin/dashboard']);
           }
-          return true;
+          return { success: true };
         }
-        return false;
+        return { success: false, message: response?.message || 'Credenciales inválidas' };
       }),
       catchError(err => {
         console.error('Error en login:', err);
-        return of(false);
+        let errorMsg = 'Error al conectar con el servidor';
+        if (err.error?.message) {
+          errorMsg = Array.isArray(err.error.message) ? err.error.message[0] : err.error.message;
+        } else if (typeof err.error === 'string') {
+          errorMsg = err.error;
+        }
+        return of({ success: false, message: errorMsg });
       })
     );
   }

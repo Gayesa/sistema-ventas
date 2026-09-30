@@ -13,7 +13,7 @@ export class VentasController {
 
   @Post()
   crearVenta(@Body() body: any, @Req() req: any) {
-    body.vendedor = req.user?.nombre || 'Vendedor';
+    body.vendedor = req.user?.nombre || body.vendedor || 'Vendedor';
     return this.ventasService.registrarVentaCompleta(body);
   }
 

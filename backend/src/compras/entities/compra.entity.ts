@@ -1,7 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
 import { DetalleCompra } from './detalle-compra.entity';
 
-@Entity()
+@Entity('compra')
 export class Compra {
   @PrimaryGeneratedColumn('uuid') id: string;
   @Column() empresa_id: string;

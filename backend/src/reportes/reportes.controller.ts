@@ -81,4 +81,10 @@ export class ReportesController {
   obtenerDashboardStatsAdmin(@Request() req) {
     return this.reportesService.obtenerDashboardStatsAdmin(req.user.empresa_id);
   }
+
+  @Get('alertas/vencimientos')
+  @Roles('ADMIN_TIENDA', 'VENDEDOR')
+  obtenerAlertasVencimientos(@Request() req, @Query('dias') dias?: number) {
+    return this.reportesService.obtenerAlertasVencimientos(req.user.empresa_id, dias ? Number(dias) : 7);
+  }
 }
