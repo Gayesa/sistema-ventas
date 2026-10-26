@@ -51,6 +51,60 @@ export class CartService {
     this.carrito.next(current);
   }
 
+  decrementarProducto(sku: string, cantidad: number = 1) {
+    const current = this.carrito.getValue();
+    const item = current.find(i => i.sku === sku);
+    if (!item) return;
+
+    if (item.cantidad <= cantidad) {
+      this.eliminarProducto(sku);
+    } else {
+      item.cantidad -= cantidad;
+      this.carrito.next([...current]);
+    }
+  }
+
+  incrementarProducto(sku: string, cantidad: number = 1): boolean {
+    const current = this.carrito.getValue();
+    const item = current.find(i => i.sku === sku);
+    if (!item) return false;
+
+    if (item.stock !== undefined && (item.cantidad + cantidad) > item.stock) {
+      alert(`No hay stock suficiente para ${item.nombre}. Stock disponible: ${item.stock}`);
+      return false;
+    }
+
+    item.cantidad += cantidad;
+    this.carrito.next([...current]);
+    return true;
+  }
+
+  actualizarCantidad(sku: string, nuevaCantidad: number): boolean {
+    const current = this.carrito.getValue();
+    const item = current.find(i => i.sku === sku);
+    if (!item) return false;
+
+    if (nuevaCantidad <= 0) {
+      this.eliminarProducto(sku);
+      return true;
+    }
+
+    if (item.stock !== undefined && nuevaCantidad > item.stock) {
+      alert(`No puedes ingresar más del stock disponible (${item.stock} unid.) para ${item.nombre}. Se ajustará al máximo disponible.`);
+      item.cantidad = item.stock;
+      this.carrito.next([...current]);
+      return false;
+    }
+
+    item.cantidad = Math.floor(nuevaCantidad);
+    this.carrito.next([...current]);
+    return true;
+  }
+
+  quitarCantidad(sku: string, cantidadAQuitar: number) {
+    this.decrementarProducto(sku, cantidadAQuitar);
+  }
+
   getCantidadEnCarrito(sku: string): number {
     const item = this.carrito.getValue().find(i => i.sku === sku);
     return item ? item.cantidad : 0;

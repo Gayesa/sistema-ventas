@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router, RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { AuthService } from '../../services/auth.service';
 import { ExportService } from '../../services/export.service';
 import { CartService, ProductoCarrito } from '../../services/cart.service';
@@ -24,9 +25,10 @@ export class PosLayoutComponent implements OnInit {
     private authService: AuthService,
     public cartService: CartService,
     private router: Router,
-    private exportService: ExportService,
+    public exportService: ExportService,
     private http: HttpClient,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private sanitizer: DomSanitizer
   ) {
     this.carrito$ = this.cartService.carrito$;
   }
@@ -237,6 +239,19 @@ export class PosLayoutComponent implements OnInit {
     this.modalReporteXVisible = false;
   }
 
+  // --- MODAL DE AJUSTE RÁPIDO DE CANTIDAD ---
+  modalAjustarCantidadVisible: boolean = false;
+  itemAjustando: ProductoCarrito | null = null;
+  modoAjuste: 'quitar' | 'fijar' = 'quitar';
+  cantidadAjuste: number = 1;
+
+  // --- MODAL CONFIRMACIÓN VACIAR TICKET ---
+  modalVaciarTicketVisible: boolean = false;
+
+  // --- MODAL VISTA PREVIA COLILLA POS ---
+  modalPreviewColillaVisible: boolean = false;
+  colillaHtmlPreviewSafe: SafeHtml = '';
+
   // --- LÓGICA DEL MODAL DE COBRO ---
   modalCobroVisible: boolean = false;
   modalConfirmacionVentaVisible: boolean = false;
@@ -348,6 +363,24 @@ export class PosLayoutComponent implements OnInit {
     }
   }
 
+  imprimirColillaUltimaVenta() {
+    if (this.ultimaVentaRealizada) {
+      this.exportService.imprimirColillaPOS(this.ultimaVentaRealizada, this.ultimoCliente);
+    }
+  }
+
+  abrirPreviewColilla() {
+    if (this.ultimaVentaRealizada) {
+      const html = this.exportService.generarHTMLColillaPOS(this.ultimaVentaRealizada, this.ultimoCliente);
+      this.colillaHtmlPreviewSafe = this.sanitizer.bypassSecurityTrustHtml(html);
+      this.modalPreviewColillaVisible = true;
+    }
+  }
+
+  cerrarPreviewColilla() {
+    this.modalPreviewColillaVisible = false;
+  }
+
   enviarWhatsAppUltimaVenta() {
     if (this.enlaceWhatsApp) {
       window.open(this.enlaceWhatsApp, '_blank');
@@ -357,6 +390,8 @@ export class PosLayoutComponent implements OnInit {
   finalizarVentaYLimpiar() {
     this.cartService.vaciarCarrito();
     this.modalCobroVisible = false;
+    this.modalPreviewColillaVisible = false;
+    this.colillaHtmlPreviewSafe = '';
     this.ventaProcesadaExito = false;
     this.limpiarMontosMixtos();
     this.clienteSeleccionado = null;
@@ -395,9 +430,9 @@ export class PosLayoutComponent implements OnInit {
 
   get cambioEfectivoMixto(): number {
     if ((Number(this.montoEfectivo) || 0) <= 0) return 0;
-    const entregado = Number(this.dineroRecibidoEfectivoMixto) || Number(this.montoEfectivo);
-    const diff = entregado - Number(this.montoEfectivo);
-    return diff > 0 ? diff : 0;
+    const recibido = Number(this.dineroRecibidoEfectivoMixto);
+    if (!recibido || recibido <= Number(this.montoEfectivo)) return 0;
+    return recibido - Number(this.montoEfectivo);
   }
 
   asignarRestante(metodo: 'EFECTIVO' | 'TARJETA' | 'NEQUI') {
@@ -452,6 +487,37 @@ export class PosLayoutComponent implements OnInit {
     return diff > 0 ? diff : 0;
   }
 
+  get puedeConfirmarPago(): boolean {
+    if (this.totalAPagarFinal <= 0 && this.cartService.contarArticulos() === 0) {
+      return false;
+    }
+
+    if (this.metodoPagoSeleccionado === 'EFECTIVO') {
+      return this.faltante <= 0;
+    }
+
+    if (this.metodoPagoSeleccionado === 'TARJETA' || this.metodoPagoSeleccionado === 'NEQUI') {
+      return true;
+    }
+
+    if (this.metodoPagoSeleccionado === 'MIXTO') {
+      // 1. Debe cubrir exactamente el total a pagar (sin faltante ni excedente)
+      if (this.faltanteMixto > 0 || this.excedenteMixto > 0) {
+        return false;
+      }
+
+      // 2. Si se asignó efectivo y el usuario digitó un billete, este no puede ser menor al efectivo requerido
+      const recibido = Number(this.dineroRecibidoEfectivoMixto);
+      if (this.montoEfectivo > 0 && recibido > 0 && recibido < this.montoEfectivo) {
+        return false;
+      }
+
+      return true;
+    }
+
+    return true;
+  }
+
   procesarVenta() {
     if (this.metodoPagoSeleccionado === 'EFECTIVO') {
       if (this.faltante > 0) {
@@ -467,7 +533,8 @@ export class PosLayoutComponent implements OnInit {
         }
         return;
       }
-      if (this.montoEfectivo > 0 && this.dineroRecibidoEfectivoMixto < this.montoEfectivo) {
+      const recibido = Number(this.dineroRecibidoEfectivoMixto);
+      if (this.montoEfectivo > 0 && recibido > 0 && recibido < this.montoEfectivo) {
         alert('El dinero recibido en efectivo es menor al monto asignado para pago en efectivo.');
         return;
       }
@@ -620,5 +687,108 @@ export class PosLayoutComponent implements OnInit {
         alert(`No se pudo procesar la venta: ${msg}`);
       }
     });
+  }
+
+  // --- MÉTODOS DE MANEJO DE CANTIDADES EN EL TICKET ---
+
+  decrementarCantidad(item: ProductoCarrito) {
+    if (item.cantidad <= 1) {
+      this.cartService.eliminarProducto(item.sku);
+    } else {
+      this.cartService.decrementarProducto(item.sku, 1);
+    }
+  }
+
+  incrementarCantidad(item: ProductoCarrito) {
+    this.cartService.incrementarProducto(item.sku, 1);
+  }
+
+  onCantidadChange(item: ProductoCarrito, event: Event) {
+    const input = event.target as HTMLInputElement;
+    const rawVal = input.value.trim();
+
+    // Soporte para delta negativo ej: "-20"
+    if (rawVal.startsWith('-')) {
+      const toSub = Math.abs(parseInt(rawVal, 10));
+      if (!isNaN(toSub) && toSub > 0) {
+        this.cartService.decrementarProducto(item.sku, toSub);
+        return;
+      }
+    }
+
+    // Soporte para delta positivo ej: "+10"
+    if (rawVal.startsWith('+')) {
+      const toAdd = parseInt(rawVal, 10);
+      if (!isNaN(toAdd) && toAdd > 0) {
+        this.cartService.incrementarProducto(item.sku, toAdd);
+        return;
+      }
+    }
+
+    const val = parseInt(rawVal, 10);
+    if (isNaN(val) || val <= 0) {
+      input.value = item.cantidad.toString();
+    } else {
+      this.cartService.actualizarCantidad(item.sku, val);
+    }
+  }
+
+  abrirModalAjustar(item: ProductoCarrito) {
+    this.itemAjustando = item;
+    this.modoAjuste = 'quitar';
+    this.cantidadAjuste = 1;
+    this.modalAjustarCantidadVisible = true;
+  }
+
+  cerrarModalAjustar() {
+    this.modalAjustarCantidadVisible = false;
+    this.itemAjustando = null;
+  }
+
+  aplicarAjusteCantidad() {
+    if (!this.itemAjustando) return;
+
+    if (this.modoAjuste === 'quitar') {
+      const aQuitar = Number(this.cantidadAjuste);
+      if (isNaN(aQuitar) || aQuitar <= 0) {
+        alert('Ingresa una cantidad válida a quitar (mayor a 0).');
+        return;
+      }
+      this.cartService.decrementarProducto(this.itemAjustando.sku, aQuitar);
+    } else {
+      const nueva = Number(this.cantidadAjuste);
+      if (isNaN(nueva) || nueva < 0) {
+        alert('Ingresa una cantidad válida.');
+        return;
+      }
+      this.cartService.actualizarCantidad(this.itemAjustando.sku, nueva);
+    }
+
+    this.cerrarModalAjustar();
+  }
+
+  quitarRapido(unidades: number) {
+    this.cantidadAjuste = unidades;
+  }
+
+  // --- MODAL PERSONALIZADO DE VACIAR TICKET ---
+
+  abrirModalVaciarTicket() {
+    if (this.cartService.contarArticulos() > 0) {
+      this.modalVaciarTicketVisible = true;
+    }
+  }
+
+  cerrarModalVaciarTicket() {
+    this.modalVaciarTicketVisible = false;
+  }
+
+  confirmarVaciarTicket() {
+    this.cartService.vaciarCarrito();
+    this.modalVaciarTicketVisible = false;
+  }
+
+  vaciarCarritoConfirm() {
+    this.abrirModalVaciarTicket();
   }
 }

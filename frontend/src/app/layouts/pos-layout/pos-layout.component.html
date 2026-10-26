@@ -2,8 +2,18 @@
   <!-- Left Column: Ticket (30%) -->
   <div class="w-[30%] bg-surface shadow-soft border-r border-slate-200 flex flex-col z-10">
     <div class="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
-      <h2 class="text-lg font-semibold text-textMain tracking-tight">Venta Actual</h2>
-      <span class="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full font-medium">Ticket #0042</span>
+      <div class="flex items-center gap-2">
+        <h2 class="text-lg font-semibold text-textMain tracking-tight">Venta Actual</h2>
+        <span class="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">Ticket #0042</span>
+      </div>
+      <button 
+        *ngIf="((carrito$ | async)?.length || 0) > 0" 
+        (click)="vaciarCarritoConfirm()" 
+        class="text-xs text-rose-500 hover:text-rose-700 hover:bg-rose-50 px-2 py-1 rounded-lg font-bold transition-all flex items-center gap-1 cursor-pointer"
+        title="Vaciar todos los productos del ticket">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+        Vaciar
+      </button>
     </div>
 
     <!-- Indicador de Cliente Asignado en Barra Lateral -->
@@ -39,23 +49,100 @@
     </div>
 
     <!-- Ticket Items -->
-    <div class="flex-1 overflow-y-auto p-4 space-y-3">
+    <div class="flex-1 overflow-y-auto p-4 space-y-2.5">
       <!-- Empty state -->
-      <div *ngIf="(carrito$ | async)?.length === 0" class="text-center text-textSecondary text-sm py-10">
-        Escanea o selecciona un producto para comenzar.
+      <div *ngIf="(carrito$ | async)?.length === 0" class="text-center text-textSecondary text-sm py-10 flex flex-col items-center">
+        <svg class="w-10 h-10 text-slate-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+        </svg>
+        <span>Escanea o selecciona un producto para comenzar.</span>
       </div>
       
       <!-- Cart Items -->
-      <div *ngFor="let item of (carrito$ | async)" class="flex justify-between items-start pb-3 border-b border-slate-100 last:border-0 group">
-        <div>
-          <h3 class="text-sm font-medium text-textMain leading-tight">{{ item.nombre }}</h3>
-          <p class="text-xs text-textSecondary mt-0.5">{{ item.cantidad }} x {{ item.precio | currency:'COP':'symbol':'1.0-0' }}</p>
+      <div *ngFor="let item of (carrito$ | async)" class="p-3 bg-white rounded-xl border border-slate-100 hover:border-slate-300 shadow-2xs transition-all space-y-2 group">
+        <!-- Top Row: Name, Subtotal and Delete button -->
+        <div class="flex items-start justify-between gap-2">
+          <div class="min-w-0 flex-1">
+            <h3 class="text-xs font-semibold text-slate-800 leading-snug line-clamp-2" [title]="item.nombre">
+              {{ item.nombre }}
+            </h3>
+            <span class="text-[10px] font-mono text-slate-400">SKU: {{ item.sku }}</span>
+          </div>
+
+          <div class="flex items-center gap-1.5 shrink-0">
+            <span class="text-sm font-bold text-slate-900">
+              {{ item.precio * item.cantidad | currency:'COP':'symbol':'1.0-0' }}
+            </span>
+            <button 
+              type="button"
+              (click)="cartService.eliminarProducto(item.sku)"
+              title="Eliminar producto del ticket"
+              class="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          </div>
         </div>
-        <div class="text-sm font-semibold text-textMain flex items-center gap-2">
-          {{ item.precio * item.cantidad | currency:'COP':'symbol':'1.0-0' }}
-          <button (click)="cartService.eliminarProducto(item.sku)" class="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-          </button>
+
+        <!-- Bottom Row: Price per unit and Stepper / Quick adjust controls -->
+        <div class="flex items-center justify-between pt-1 border-t border-slate-50">
+          <div class="text-[11px] text-slate-500 font-medium">
+            {{ item.precio | currency:'COP':'symbol':'1.0-0' }} <span class="text-slate-400 text-[10px]">/ u.</span>
+            <span *ngIf="item.stock !== undefined" class="block text-[9px] text-slate-400">Stock: {{ item.stock }}</span>
+          </div>
+
+          <div class="flex items-center gap-1.5">
+            <!-- Stepper Container -->
+            <div class="flex items-center bg-slate-100 rounded-lg p-0.5 border border-slate-200">
+              <!-- Minus Button: decrementar 1 -->
+              <button 
+                type="button"
+                (click)="decrementarCantidad(item)"
+                title="Quitar 1 unidad (-)"
+                class="w-6 h-6 flex items-center justify-center rounded bg-white text-slate-600 hover:bg-rose-100 hover:text-rose-600 shadow-2xs transition-colors font-black cursor-pointer active:scale-95"
+              >
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M20 12H4" />
+                </svg>
+              </button>
+
+              <!-- Editable Quantity Input -->
+              <input 
+                type="text" 
+                [value]="item.cantidad" 
+                (change)="onCantidadChange(item, $event)"
+                (focus)="$event.target.select()"
+                title="Ingresa la cantidad deseada (o escribe -20 para restar 20)"
+                class="w-12 text-center text-xs font-bold text-slate-800 bg-transparent border-0 focus:ring-0 p-0 outline-none"
+              />
+
+              <!-- Plus Button: sumar 1 -->
+              <button 
+                type="button"
+                (click)="incrementarCantidad(item)"
+                [disabled]="item.stock !== undefined && item.cantidad >= item.stock"
+                title="Agregar 1 unidad (+)"
+                class="w-6 h-6 flex items-center justify-center rounded bg-white text-slate-600 hover:bg-emerald-100 hover:text-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs transition-colors font-black cursor-pointer active:scale-95"
+              >
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
+                </svg>
+              </button>
+            </div>
+
+            <!-- Quick Adjust / Quitar N Button -->
+            <button 
+              type="button"
+              (click)="abrirModalAjustar(item)"
+              title="Ajustar o quitar varias unidades (ej. restar 20)"
+              class="px-2 py-1 text-[11px] font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-colors cursor-pointer flex items-center gap-0.5"
+            >
+              <span>±</span>
+              <span class="hidden sm:inline">Quitar</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -134,6 +221,214 @@
     <!-- Workspace Content -->
     <div class="flex-1 overflow-y-auto bg-slate-50">
       <router-outlet></router-outlet>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de Confirmación para Vaciar Ticket -->
+<div *ngIf="modalVaciarTicketVisible" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in-up">
+  <div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden border border-slate-100 flex flex-col p-6 text-center relative">
+    
+    <!-- Botón Cerrar (X) -->
+    <button (click)="cerrarModalVaciarTicket()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-full p-1.5 transition-colors cursor-pointer" title="Cerrar">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+
+    <!-- Icono Ilustrativo con Aura -->
+    <div class="w-16 h-16 rounded-2xl bg-rose-50 border border-rose-100 text-rose-500 flex items-center justify-center mx-auto mb-4 shadow-sm relative group">
+      <div class="absolute inset-0 rounded-2xl bg-rose-400/20 blur-md -z-10 animate-pulse"></div>
+      <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+      </svg>
+    </div>
+
+    <!-- Título y Descripción -->
+    <h3 class="text-xl font-black text-slate-800 tracking-tight">¿Vaciar Ticket Actual?</h3>
+    <p class="text-xs text-slate-500 mt-2 leading-relaxed">
+      Estás a punto de eliminar todos los productos agregados a esta venta. Esta acción cancelará el ticket en curso.
+    </p>
+
+    <!-- Resumen del Ticket a Descartar -->
+    <div class="mt-4 p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl flex items-center justify-between text-left">
+      <div class="flex items-center gap-2.5">
+        <div class="w-2.5 h-2.5 rounded-full bg-rose-500 ring-4 ring-rose-100"></div>
+        <div>
+          <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Artículos en ticket</span>
+          <span class="text-xs font-black text-slate-800">{{ cartService.contarArticulos() }} unidades</span>
+        </div>
+      </div>
+      <div class="text-right">
+        <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Total a cancelar</span>
+        <span class="text-sm font-black text-rose-600">{{ cartService.calcularTotal() | currency:'COP':'symbol':'1.0-0' }}</span>
+      </div>
+    </div>
+
+    <!-- Botones de Acción -->
+    <div class="grid grid-cols-2 gap-3 mt-6">
+      <button 
+        type="button" 
+        (click)="cerrarModalVaciarTicket()" 
+        class="w-full py-3 px-4 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs shadow-2xs hover:shadow-xs transition-all cursor-pointer">
+        Conservar Venta
+      </button>
+      <button 
+        type="button" 
+        (click)="confirmarVaciarTicket()" 
+        class="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 active:scale-[0.98] text-white font-black text-xs shadow-md shadow-rose-500/20 hover:shadow-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+        Sí, Vaciar Todo
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de Ajuste de Cantidad (Quitar o Fijar Unidades) -->
+<div *ngIf="modalAjustarCantidadVisible && itemAjustando" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in-up">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-100 flex flex-col">
+    <!-- Header -->
+    <div class="px-6 py-4 bg-slate-900 text-white flex justify-between items-center shadow-sm">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-indigo-500/20 text-indigo-400 border border-indigo-400/30 flex items-center justify-center">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/></svg>
+        </div>
+        <div>
+          <h2 class="text-base font-bold text-white tracking-tight">Modificar Cantidad</h2>
+          <p class="text-xs text-slate-400 truncate max-w-[240px]">{{ itemAjustando.nombre }}</p>
+        </div>
+      </div>
+      <button (click)="cerrarModalAjustar()" class="text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-full p-1.5 transition-colors cursor-pointer">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <!-- Body -->
+    <div class="p-6 space-y-4">
+      <!-- Badge Estado Actual -->
+      <div class="flex items-center justify-between p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
+        <div>
+          <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Cantidad Actual</span>
+          <span class="text-2xl font-black text-slate-800">{{ itemAjustando.cantidad }} <span class="text-xs font-semibold text-slate-500">unidades</span></span>
+        </div>
+        <div class="text-right">
+          <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Precio Unitario</span>
+          <span class="text-sm font-bold text-slate-700">{{ itemAjustando.precio | currency:'COP':'symbol':'1.0-0' }}</span>
+        </div>
+      </div>
+
+      <!-- Selector de Modo: Quitar (Restar) vs Fijar Total -->
+      <div class="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl">
+        <button 
+          type="button" 
+          (click)="modoAjuste = 'quitar'; cantidadAjuste = 1"
+          [class.bg-white]="modoAjuste === 'quitar'"
+          [class.text-rose-600]="modoAjuste === 'quitar'"
+          [class.shadow-xs]="modoAjuste === 'quitar'"
+          [class.text-slate-600]="modoAjuste !== 'quitar'"
+          class="py-2 text-xs font-bold rounded-lg transition-all text-center cursor-pointer">
+          Quitar Unidades (-)
+        </button>
+        <button 
+          type="button" 
+          (click)="modoAjuste = 'fijar'; cantidadAjuste = itemAjustando.cantidad"
+          [class.bg-white]="modoAjuste === 'fijar'"
+          [class.text-indigo-600]="modoAjuste === 'fijar'"
+          [class.shadow-xs]="modoAjuste === 'fijar'"
+          [class.text-slate-600]="modoAjuste !== 'fijar'"
+          class="py-2 text-xs font-bold rounded-lg transition-all text-center cursor-pointer">
+          Fijar Total Exacto
+        </button>
+      </div>
+
+      <!-- Modo Quitar -->
+      <div *ngIf="modoAjuste === 'quitar'" class="space-y-3">
+        <label class="block text-xs font-bold text-slate-700">
+          ¿Cuántas unidades deseas quitar? (ej. restar 20)
+        </label>
+        
+        <!-- Botones de resta rápida -->
+        <div class="flex gap-1.5">
+          <button *ngFor="let num of [1, 5, 10, 20, 50]" 
+                  type="button"
+                  (click)="quitarRapido(num)"
+                  [class.bg-rose-100]="cantidadAjuste === num"
+                  [class.text-rose-700]="cantidadAjuste === num"
+                  [class.border-rose-300]="cantidadAjuste === num"
+                  class="flex-1 py-1.5 text-xs font-bold rounded-lg border border-slate-200 bg-white hover:bg-rose-50 text-slate-700 transition-colors cursor-pointer">
+            -{{ num }}
+          </button>
+        </div>
+
+        <!-- Input de cantidad a quitar -->
+        <div class="relative">
+          <input 
+            type="number" 
+            [(ngModel)]="cantidadAjuste" 
+            min="1" 
+            [max]="itemAjustando.cantidad"
+            class="w-full pl-4 pr-20 py-2.5 bg-white border border-slate-300 rounded-xl text-lg font-black text-slate-800 focus:ring-2 focus:ring-rose-500 focus:border-rose-500 outline-none"
+            placeholder="Ej: 20"
+          />
+          <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">unidades</span>
+        </div>
+
+        <!-- Previsualización del resultado -->
+        <div class="p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-900 flex justify-between items-center">
+          <span class="font-medium">Quedarán en la venta:</span>
+          <span class="font-black text-sm text-amber-950">
+            {{ itemAjustando.cantidad - (cantidadAjuste || 0) > 0 ? (itemAjustando.cantidad - (cantidadAjuste || 0)) : 0 }} unid.
+            <span *ngIf="itemAjustando.cantidad - (cantidadAjuste || 0) <= 0" class="text-rose-600 font-bold ml-1">(Se eliminará)</span>
+          </span>
+        </div>
+      </div>
+
+      <!-- Modo Fijar Total -->
+      <div *ngIf="modoAjuste === 'fijar'" class="space-y-3">
+        <label class="block text-xs font-bold text-slate-700">
+          Nueva cantidad total deseada en la venta:
+        </label>
+
+        <div class="relative">
+          <input 
+            type="number" 
+            [(ngModel)]="cantidadAjuste" 
+            min="0" 
+            class="w-full pl-4 pr-20 py-2.5 bg-white border border-slate-300 rounded-xl text-lg font-black text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+            placeholder="Ej: 80"
+          />
+          <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">unidades</span>
+        </div>
+
+        <p *ngIf="itemAjustando.stock !== undefined" class="text-xs text-slate-500">
+          Stock disponible en tienda: <strong class="text-slate-800">{{ itemAjustando.stock }} unid.</strong>
+        </p>
+      </div>
+
+      <!-- Botón Eliminar Producto por completo -->
+      <div class="pt-2 border-t border-slate-100 flex justify-between items-center">
+        <button 
+          type="button"
+          (click)="cartService.eliminarProducto(itemAjustando.sku); cerrarModalAjustar()" 
+          class="text-xs text-rose-500 hover:text-rose-700 font-bold flex items-center gap-1 cursor-pointer hover:underline">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+          Eliminar todo este producto
+        </button>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3">
+      <button 
+        type="button" 
+        (click)="cerrarModalAjustar()" 
+        class="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 font-semibold text-xs hover:bg-slate-100 transition-colors cursor-pointer">
+        Cancelar
+      </button>
+      <button 
+        type="button" 
+        (click)="aplicarAjusteCantidad()" 
+        class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm transition-all cursor-pointer">
+        {{ modoAjuste === 'quitar' ? ('Restar ' + (cantidadAjuste || 0) + ' Unidades') : 'Guardar Cantidad' }}
+      </button>
     </div>
   </div>
 </div>
@@ -342,8 +637,9 @@
               <div *ngIf="montoEfectivo > 0" class="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs bg-emerald-50/50 p-2 rounded-lg">
                 <div class="flex items-center gap-2">
                   <span class="text-slate-600 font-medium">Billete recibido:</span>
-                  <input type="number" [(ngModel)]="dineroRecibidoEfectivoMixto" [placeholder]="montoEfectivo" min="0"
-                         class="w-28 px-2 py-1 text-right font-bold text-slate-800 bg-white border border-emerald-300 rounded text-xs outline-none">
+                  <input type="number" [(ngModel)]="dineroRecibidoEfectivoMixto" [placeholder]="'Exacto: ' + montoEfectivo" min="0"
+                         class="w-32 px-2 py-1 text-right font-bold text-slate-800 bg-white border border-emerald-300 rounded text-xs outline-none focus:ring-1 focus:ring-emerald-500"
+                         title="Opcional: Si el cliente entrega un billete mayor para calcular vueltos">
                 </div>
                 <div class="font-bold">
                   <span class="text-slate-500">Cambio:</span>
@@ -617,26 +913,44 @@
         </div>
       </div>
 
-      <!-- Acciones Principales: WhatsApp y Factura PDF -->
-      <div class="flex flex-col sm:flex-row gap-3 w-full max-w-md mt-1">
-        <!-- Botón Enviar WhatsApp (Si el cliente tiene teléfono registrado) -->
-        <button *ngIf="enlaceWhatsApp" type="button" (click)="enviarWhatsAppUltimaVenta()"
-                class="flex-1 px-4 py-3 bg-[#25D366] hover:bg-[#20ba5a] text-white rounded-xl font-bold text-xs sm:text-sm transition-all shadow-sm hover:shadow-md flex items-center justify-center gap-2 cursor-pointer">
-          <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
-          Enviar a WhatsApp
+      <!-- Acciones Principales: Colilla POS, Factura PDF y WhatsApp -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full max-w-md mt-2">
+        <!-- Botón Imprimir Colilla POS (Tirilla de Supermercado / Papel Blanco) -->
+        <button type="button" (click)="imprimirColillaUltimaVenta()"
+                class="px-4 py-3 bg-slate-900 hover:bg-black text-white rounded-xl font-bold text-xs sm:text-sm transition-all shadow-sm hover:shadow-md flex items-center justify-center gap-2 cursor-pointer border border-slate-800 group"
+                title="Imprimir colilla de venta para cliente (papel blanco o impresora térmica 80mm)">
+          <svg class="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+          </svg>
+          Imprimir Colilla POS
         </button>
 
         <!-- Botón Imprimir Factura PDF -->
         <button type="button" (click)="imprimirFacturaUltimaVenta()"
-                class="flex-1 px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs sm:text-sm transition-all shadow-sm hover:shadow-md flex items-center justify-center gap-2 cursor-pointer">
+                class="px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs sm:text-sm transition-all shadow-sm hover:shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                title="Descargar comprobante en formato PDF carta A4">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-          Imprimir Factura PDF
+          Factura PDF (A4)
+        </button>
+
+        <!-- Botón Enviar WhatsApp (Si el cliente tiene teléfono registrado) -->
+        <button *ngIf="enlaceWhatsApp" type="button" (click)="enviarWhatsAppUltimaVenta()"
+                class="sm:col-span-2 px-4 py-2.5 bg-[#25D366] hover:bg-[#20ba5a] text-white rounded-xl font-bold text-xs sm:text-sm transition-all shadow-sm hover:shadow-md flex items-center justify-center gap-2 cursor-pointer">
+          <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
+          Enviar a WhatsApp
         </button>
       </div>
 
+      <!-- Enlace para Vista Previa de la Colilla -->
+      <button type="button" (click)="abrirPreviewColilla()"
+              class="text-xs text-indigo-600 hover:text-indigo-800 hover:underline font-semibold mt-2.5 flex items-center gap-1.5 cursor-pointer">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+        Ver vista previa de la colilla
+      </button>
+
       <!-- Botón Nueva Venta / Listo -->
       <button type="button" (click)="finalizarVentaYLimpiar()"
-              class="mt-4 px-6 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-colors cursor-pointer">
+              class="mt-3.5 px-6 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-colors cursor-pointer">
         + Nueva Venta / Cerrar
       </button>
     </div>
@@ -653,7 +967,7 @@
           Cancelar
         </button>
         <button type="button" (click)="procesarVenta()"
-                [disabled]="(metodoPagoSeleccionado === 'EFECTIVO' && faltante > 0) || (metodoPagoSeleccionado === 'MIXTO' && (faltanteMixto > 0 || excedenteMixto > 0 || (montoEfectivo > 0 && dineroRecibidoEfectivoMixto < montoEfectivo)))"
+                [disabled]="!puedeConfirmarPago"
                 class="px-7 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl font-black text-sm transition-all flex items-center gap-2 shadow-sm cursor-pointer">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
           Confirmar Pago ({{ totalAPagarFinal | currency:'COP':'symbol':'1.0-0' }})
@@ -898,6 +1212,43 @@
     </div>
     <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-center gap-3">
       <button (click)="abrirCaja()" class="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black transition-colors shadow-sm text-lg">Abrir Turno</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Vista Previa de Colilla Supermercado (Papel Blanco / Térmico 80mm) -->
+<div *ngIf="modalPreviewColillaVisible" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/75 backdrop-blur-sm p-4 animate-fade-in-up">
+  <div class="bg-white rounded-3xl shadow-2xl max-w-sm w-full overflow-hidden flex flex-col max-h-[92vh] border border-slate-100">
+    <!-- Header -->
+    <div class="px-5 py-3.5 bg-slate-900 text-white flex justify-between items-center shadow-sm">
+      <div class="flex items-center gap-2">
+        <span class="text-base">🧾</span>
+        <div>
+          <h3 class="text-sm font-bold text-white tracking-tight">Colilla de Venta POS</h3>
+          <p class="text-[10px] text-slate-400">Formato para impresora térmica / papel blanco</p>
+        </div>
+      </div>
+      <button (click)="cerrarPreviewColilla()" class="text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-full p-1.5 transition-colors cursor-pointer" title="Cerrar">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    
+    <!-- Contenedor del Ticket estilo papel blanco de supermercado -->
+    <div class="p-4 overflow-y-auto bg-slate-200/80 flex justify-center">
+      <div class="bg-white p-4 shadow-lg rounded-sm border border-slate-300 text-black font-mono text-xs w-[76mm] leading-snug">
+        <div [innerHTML]="colillaHtmlPreviewSafe"></div>
+      </div>
+    </div>
+
+    <!-- Footer con acciones -->
+    <div class="p-3.5 bg-slate-50 border-t border-slate-200 flex justify-end gap-2.5">
+      <button (click)="cerrarPreviewColilla()" class="px-4 py-2.5 text-xs font-bold text-slate-600 bg-white border border-slate-300 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer">
+        Cerrar
+      </button>
+      <button (click)="imprimirColillaUltimaVenta()" class="px-5 py-2.5 text-xs font-bold text-white bg-slate-900 hover:bg-black active:scale-95 rounded-xl shadow-sm flex items-center gap-2 transition-all cursor-pointer">
+        <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+        Imprimir Colilla
+      </button>
     </div>
   </div>
 </div>

@@ -16,9 +16,18 @@ export class AuthService {
     this.checkSession();
   }
 
+  normalizeRole(role: string | null | undefined): string {
+    if (!role) return '';
+    const cleaned = role.trim().toUpperCase().replace(/\s+/g, '_');
+    if (cleaned === 'SUPERADMIN') return 'SUPER_ADMIN';
+    if (cleaned === 'ADMINTIENDA') return 'ADMIN_TIENDA';
+    return cleaned;
+  }
+
   checkSession() {
     const token = localStorage.getItem('token');
-    const role = localStorage.getItem('role');
+    const rawRole = localStorage.getItem('role');
+    const role = this.normalizeRole(rawRole);
     const name = localStorage.getItem('name');
     let empresa_id = localStorage.getItem('empresa_id');
     const empresa_nombre = localStorage.getItem('empresa_nombre');
@@ -41,8 +50,9 @@ export class AuthService {
     return this.http.post<any>(`${environment.apiUrl}/auth/login`, credentials).pipe(
       map(response => {
         if (response && response.success) {
+          const normalizedRole = this.normalizeRole(response.role);
           const session = { 
-            role: response.role, 
+            role: normalizedRole, 
             token: response.token, 
             name: response.name,
             empresa_id: response.empresa_id,
@@ -52,7 +62,7 @@ export class AuthService {
           };
           this.setSession(session);
           
-          if (response.role === 'VENDEDOR') {
+          if (normalizedRole === 'VENDEDOR') {
             this.router.navigate(['/pos/caja']);
           } else {
             this.router.navigate(['/admin/dashboard']);
@@ -75,8 +85,11 @@ export class AuthService {
   }
 
   private setSession(session: any) {
+    const normalizedRole = this.normalizeRole(session.role);
+    session.role = normalizedRole;
+
     localStorage.setItem('token', session.token);
-    localStorage.setItem('role', session.role);
+    localStorage.setItem('role', normalizedRole);
     localStorage.setItem('name', session.name);
     
     if (session.empresa_id) {
@@ -116,8 +129,8 @@ export class AuthService {
     return !!localStorage.getItem('token');
   }
 
-  getRole(): string | null {
-    return localStorage.getItem('role');
+  getRole(): string {
+    return this.normalizeRole(localStorage.getItem('role'));
   }
 }
 

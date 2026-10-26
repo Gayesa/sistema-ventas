@@ -26,7 +26,10 @@ import * as Joi from 'joi';
     // ── Environment Configuration with Validation ──
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: '.env',
+      envFilePath: [
+        `.env.${process.env.NODE_ENV || 'development'}`,
+        '.env',
+      ],
       validationSchema: Joi.object({
         // Database
         DB_HOST: Joi.string().default('localhost'),
@@ -34,6 +37,7 @@ import * as Joi from 'joi';
         DB_USERNAME: Joi.string().required(),
         DB_PASSWORD: Joi.string().required(),
         DB_DATABASE: Joi.string().required(),
+        DB_SYNCHRONIZE: Joi.alternatives().try(Joi.boolean(), Joi.string().valid('true', 'false')).default(false),
         // JWT
         JWT_SECRET: Joi.string().min(32).required(),
         JWT_EXPIRATION: Joi.string().default('8h'),
@@ -78,7 +82,7 @@ import * as Joi from 'joi';
         password: config.get<string>('DB_PASSWORD'),
         database: config.get<string>('DB_DATABASE'),
         autoLoadEntities: true,
-        synchronize: config.get<string>('DB_SYNCHRONIZE') === 'true', // Configurable for development
+        synchronize: String(config.get('DB_SYNCHRONIZE')) === 'true', // Configurable for development
       }),
     }),
 

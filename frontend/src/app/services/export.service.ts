@@ -1307,4 +1307,294 @@ ${listaProds}
     doc.setTextColor(71, 85, 105); // text-slate-600
     doc.text(empresaNombre.charAt(0).toUpperCase() || 'E', pageWidth - margenDerecho - 46, 85);
   }
+
+  /**
+   * Genera el HTML enriquecido para la colilla / tirilla de supermercado (formato térmico 80mm / papel blanco)
+   */
+  generarHTMLColillaPOS(venta: any, clienteDatos?: any): string {
+    if (!venta) return '';
+
+    const empresaNombre = localStorage.getItem('empresa_nombre') || 'SUPERMERCADO & TIENDA';
+    const empresaDoc = localStorage.getItem('empresa_documento') || 'NIT: 900.000.000-1';
+    const empresaDireccion = localStorage.getItem('empresa_direccion') || 'Punto de Venta Principal';
+    const empresaTelefono = localStorage.getItem('empresa_telefono') || 'PBX: (601) 555-0199';
+    
+    const numTicket = venta.numero_ticket || venta.ticket || 'TKT-001';
+    const fechaObj = venta.fecha ? new Date(venta.fecha) : new Date();
+    const fechaTexto = fechaObj.toLocaleDateString('es-CO');
+    const horaTexto = fechaObj.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: true });
+    
+    const adminNombre = venta.vendedor || localStorage.getItem('name') || 'Caja 01';
+    const cliente = clienteDatos || venta.cliente_datos || null;
+
+    const totalVenta = Number(venta.total || 0);
+    const subtotal = Math.round(totalVenta / 1.10);
+    const iva = totalVenta - subtotal;
+
+    // Conteo de artículos
+    const totalArticulos = (venta.detalles || []).reduce((acc: number, d: any) => acc + Number(d.cantidad || 1), 0);
+
+    // Filas de productos
+    let productosHtml = '';
+    (venta.detalles || []).forEach((d: any) => {
+      const cant = d.cantidad || 1;
+      const nom = (d.nombre_producto || d.nombre || 'Producto').toUpperCase();
+      const precio = Number(d.precio_unitario || d.precio || 0);
+      const sub = Number(d.subtotal || (cant * precio));
+
+      productosHtml += `
+        <div style="margin-bottom: 5px;">
+          <div style="font-weight: bold; font-size: 11px; word-break: break-word;">${nom}</div>
+          <div style="display: flex; justify-content: space-between; font-size: 10.5px; color: #111;">
+            <span>&nbsp;&nbsp;${cant} unid. x $ ${precio.toLocaleString('es-CO')}</span>
+            <span style="font-weight: bold;">$ ${sub.toLocaleString('es-CO')}</span>
+          </div>
+        </div>
+      `;
+    });
+
+    // Desglose de medios de pago
+    let desgloseHtml = '';
+    const pd = venta.pagos_detalle;
+    if (pd && pd.tipo === 'MIXTO') {
+      desgloseHtml += `<div style="font-weight: bold; margin-top: 4px; font-size: 10.5px;">FORMA DE PAGO: MIXTO</div>`;
+      if (pd.efectivo > 0) {
+        desgloseHtml += `
+          <div style="display: flex; justify-content: space-between; font-size: 10px;">
+            <span>&nbsp;• Efectivo:</span>
+            <span>$ ${Number(pd.efectivo).toLocaleString('es-CO')}</span>
+          </div>`;
+        const recibido = Number(pd.dinero_recibido_efectivo) || Number(pd.efectivo);
+        desgloseHtml += `
+          <div style="display: flex; justify-content: space-between; font-size: 10px; color: #444;">
+            <span>&nbsp;&nbsp;&nbsp;Entregado:</span>
+            <span>$ ${recibido.toLocaleString('es-CO')}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 10px; color: #444;">
+            <span>&nbsp;&nbsp;&nbsp;Cambio / Vueltos:</span>
+            <span style="font-weight: bold;">$ ${Number(pd.cambio || 0).toLocaleString('es-CO')}</span>
+          </div>`;
+      }
+      if (pd.tarjeta > 0) {
+        desgloseHtml += `
+          <div style="display: flex; justify-content: space-between; font-size: 10px;">
+            <span>&nbsp;• Tarjeta (Datafono):</span>
+            <span>$ ${Number(pd.tarjeta).toLocaleString('es-CO')}</span>
+          </div>`;
+      }
+      if (pd.nequi > 0) {
+        desgloseHtml += `
+          <div style="display: flex; justify-content: space-between; font-size: 10px;">
+            <span>&nbsp;• Nequi / QR:</span>
+            <span>$ ${Number(pd.nequi).toLocaleString('es-CO')}</span>
+          </div>`;
+      }
+    } else {
+      const metodo = (venta.metodo_pago || 'EFECTIVO').toUpperCase();
+      desgloseHtml += `<div style="display: flex; justify-content: space-between; font-size: 10.5px;">
+        <span style="font-weight: bold;">FORMA DE PAGO:</span>
+        <span style="font-weight: bold;">${metodo}</span>
+      </div>`;
+      if (metodo === 'EFECTIVO') {
+        const recibido = venta.pagos_detalle ? (Number(venta.pagos_detalle.dinero_recibido_efectivo) || totalVenta) : totalVenta;
+        const cambio = venta.pagos_detalle ? Number(venta.pagos_detalle.cambio || 0) : 0;
+        desgloseHtml += `
+          <div style="display: flex; justify-content: space-between; font-size: 10px; color: #444;">
+            <span>&nbsp;Dinero Recibido:</span>
+            <span>$ ${recibido.toLocaleString('es-CO')}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 10px; color: #444;">
+            <span>&nbsp;Cambio / Vueltos:</span>
+            <span style="font-weight: bold;">$ ${cambio.toLocaleString('es-CO')}</span>
+          </div>`;
+      }
+    }
+
+    // Datos del cliente
+    let clienteHtml = '';
+    if (cliente) {
+      clienteHtml = `
+        <div style="font-size: 10.5px;">
+          <div><span style="font-weight: bold;">CLIENTE:</span> ${(cliente.nombres || '') + ' ' + (cliente.apellidos || '')}</div>
+          <div><span style="font-weight: bold;">C.C. / NIT:</span> ${cliente.cedula || 'N/A'}</div>
+          ${cliente.telefono ? `<div><span style="font-weight: bold;">TELÉFONO:</span> ${cliente.telefono}</div>` : ''}
+          ${cliente.direccion ? `<div><span style="font-weight: bold;">DIRECCIÓN:</span> ${cliente.direccion}</div>` : ''}
+        </div>
+      `;
+    } else {
+      clienteHtml = `
+        <div style="font-size: 10.5px;">
+          <div><span style="font-weight: bold;">CLIENTE:</span> CONSUMIDOR FINAL</div>
+          <div><span style="font-weight: bold;">C.C.:</span> 222222222222</div>
+        </div>
+      `;
+    }
+
+    return `
+      <div style="width: 100%; max-width: 74mm; margin: 0 auto; font-family: 'Consolas', 'Courier New', monospace; font-size: 11px; line-height: 1.35; color: #000; box-sizing: border-box;">
+        
+        <!-- ENCABEZADO EMPRESA -->
+        <div style="text-align: center; margin-bottom: 6px;">
+          <div style="font-size: 14px; font-weight: 900; letter-spacing: 0.5px; text-transform: uppercase;">${empresaNombre}</div>
+          <div style="font-size: 10.5px; font-weight: bold; margin-top: 1px;">${empresaDoc}</div>
+          <div style="font-size: 9.5px; color: #333;">${empresaDireccion}</div>
+          <div style="font-size: 9.5px; color: #333;">${empresaTelefono}</div>
+          <div style="font-size: 9px; font-weight: bold; margin-top: 2px;">DOCUMENTO EQUIVALENTE POS</div>
+        </div>
+
+        <div style="border-top: 1px dashed #000; margin: 5px 0;"></div>
+
+        <!-- DATOS DEL TICKET -->
+        <div style="font-size: 10.5px;">
+          <div style="display: flex; justify-content: space-between; font-weight: bold;">
+            <span>TICKET N°:</span>
+            <span style="font-size: 11.5px;">${numTicket}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 10px;">
+            <span>FECHA: ${fechaTexto}</span>
+            <span>HORA: ${horaTexto}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 10px;">
+            <span>CAJA: 01</span>
+            <span>CAJERO: ${adminNombre}</span>
+          </div>
+        </div>
+
+        <div style="border-top: 1px dashed #000; margin: 5px 0;"></div>
+
+        <!-- DATOS CLIENTE -->
+        ${clienteHtml}
+
+        <div style="border-top: 1px dashed #000; margin: 5px 0;"></div>
+
+        <!-- ENCABEZADO ITEMS -->
+        <div style="display: flex; justify-content: space-between; font-weight: 900; font-size: 10px; margin-bottom: 3px;">
+          <span>CANT &nbsp; DESCRIPCIÓN</span>
+          <span>VALOR</span>
+        </div>
+        <div style="border-top: 1px solid #000; margin: 2px 0 5px 0;"></div>
+
+        <!-- ITEMS -->
+        ${productosHtml}
+
+        <div style="border-top: 1px dashed #000; margin: 5px 0;"></div>
+
+        <!-- TOTALES -->
+        <div style="font-size: 10.5px;">
+          <div style="display: flex; justify-content: space-between;">
+            <span>TOTAL ARTÍCULOS:</span>
+            <span style="font-weight: bold;">${totalArticulos}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between;">
+            <span>SUBTOTAL:</span>
+            <span>$ ${subtotal.toLocaleString('es-CO')}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between;">
+            <span>IMPUESTOS (10% IVA):</span>
+            <span>$ ${iva.toLocaleString('es-CO')}</span>
+          </div>
+        </div>
+
+        <div style="border-top: 2px solid #000; border-bottom: 1px solid #000; padding: 4px 0; margin: 5px 0;">
+          <div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: 900;">
+            <span>TOTAL A PAGAR:</span>
+            <span>$ ${totalVenta.toLocaleString('es-CO')}</span>
+          </div>
+        </div>
+
+        <!-- DESGLOSE DE PAGO -->
+        <div style="margin-top: 4px;">
+          ${desgloseHtml}
+        </div>
+
+        <div style="border-top: 1px dashed #000; margin: 6px 0;"></div>
+
+        <!-- PIE DE TICKET / RESOLUCIÓN / CODIGO -->
+        <div style="text-align: center; font-size: 9.5px; color: #222; margin-top: 4px;">
+          <div style="font-weight: bold; margin-bottom: 2px;">*** ¡GRACIAS POR SU COMPRA! ***</div>
+          <div>Conserve esta colilla para cambios y garantías</div>
+          <div style="font-size: 8.5px; color: #555; margin-top: 2px;">Plazo máximo de cambio: 30 días calendario</div>
+          <div style="margin: 6px auto 2px auto; text-align: center;">
+            <div style="display: inline-block; height: 26px; width: 140px; background: repeating-linear-gradient(90deg, #000 0px, #000 2px, #fff 2px, #fff 4px, #000 4px, #000 6px, #fff 6px, #fff 8px);"></div>
+            <div style="font-size: 9px; letter-spacing: 1px; font-weight: bold;">*${numTicket}*</div>
+          </div>
+          <div style="font-size: 8px; color: #666; margin-top: 2px;">Software: Sistema de Ventas POS SaaS</div>
+        </div>
+
+      </div>
+    `;
+  }
+
+  /**
+   * Imprime directamente la colilla de venta en papel blanco / impresora térmica de 80mm
+   */
+  imprimirColillaPOS(venta: any, clienteDatos?: any) {
+    if (!venta) return;
+    const contenidoTicket = this.generarHTMLColillaPOS(venta, clienteDatos);
+
+    const docCompleto = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Colilla POS - ${venta.numero_ticket || 'Ticket'}</title>
+        <style>
+          @page {
+            size: 80mm auto;
+            margin: 0;
+          }
+          @media print {
+            html, body {
+              width: 78mm !important;
+              margin: 0 !important;
+              padding: 2mm 3mm !important;
+              background: #fff !important;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+          }
+          body {
+            background: #fff;
+            margin: 0 auto;
+            padding: 8px 4px;
+            width: 76mm;
+          }
+        </style>
+      </head>
+      <body>
+        ${contenidoTicket}
+      </body>
+      </html>
+    `;
+
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentWindow?.document;
+    if (!doc) return;
+
+    doc.open();
+    doc.write(docCompleto);
+    doc.close();
+
+    setTimeout(() => {
+      try {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+      } catch (e) {
+        console.error('Error al imprimir colilla:', e);
+      }
+      setTimeout(() => {
+        if (document.body.contains(iframe)) {
+          document.body.removeChild(iframe);
+        }
+      }, 2000);
+    }, 250);
+  }
 }

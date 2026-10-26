@@ -10,17 +10,18 @@ export const authGuard: CanActivateFn = (route, state) => {
     return router.createUrlTree(['/login']);
   }
 
-  const role = authService.getRole();
+  const rawRole = authService.getRole();
+  const role = (rawRole || '').trim().toUpperCase();
   const path = route.routeConfig?.path;
 
   // Basic RBAC (Role Based Access Control)
   const isAdminPath = path === 'admin';
   const isPosPath = path === 'pos';
 
-  const allowedAdminRoles = ['ADMIN', 'SUPER_ADMIN', 'ADMIN_TIENDA'];
+  const allowedAdminRoles = ['ADMIN', 'SUPER_ADMIN', 'SUPERADMIN', 'ADMIN_TIENDA'];
   const allowedPosRoles = ['VENDEDOR', 'ADMIN', 'ADMIN_TIENDA'];
 
-  if (isAdminPath && !allowedAdminRoles.includes(role || '')) {
+  if (isAdminPath && !allowedAdminRoles.includes(role)) {
     return router.createUrlTree(['/pos/caja']);
   }
 

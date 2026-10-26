@@ -17,14 +17,29 @@ export class AdminLayoutComponent implements OnInit {
   isSidebarCollapsed = false;
   userRole: string = 'SUPER_ADMIN'; // Default for demo
 
+  get isSuperAdmin(): boolean {
+    const r = (this.userRole || '').trim().toUpperCase();
+    return r === 'SUPER_ADMIN' || r === 'SUPERADMIN';
+  }
+
+  get isAdminTienda(): boolean {
+    const r = (this.userRole || '').trim().toUpperCase();
+    return r === 'ADMIN_TIENDA' || r === 'ADMIN';
+  }
+
+  get isVendedor(): boolean {
+    const r = (this.userRole || '').trim().toUpperCase();
+    return r === 'VENDEDOR';
+  }
+
   constructor(private authService: AuthService, private router: Router, private refreshService: RefreshService) {}
 
   ngOnInit() {
-    this.userRole = this.authService.getRole() || 'SUPER_ADMIN';
+    this.userRole = (this.authService.getRole() || 'SUPER_ADMIN').trim().toUpperCase();
     this.adminName = this.authService.currentUser()?.name || 'Super Administrador';
     
     // Simulate loading the associated company if they are a Tienda Admin
-    if (this.userRole === 'ADMIN_TIENDA') {
+    if (this.isAdminTienda) {
       const empresaNombre = this.authService.currentUser()?.empresa_nombre || 'Mi Empresa S.A.';
       this.companyName = empresaNombre;
       const logoName = encodeURIComponent(empresaNombre);

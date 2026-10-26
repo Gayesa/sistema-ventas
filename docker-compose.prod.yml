@@ -1,0 +1,79 @@
+# ============================================
+# SISTEMA VENTAS SaaS — Production Docker Compose
+# Deployment: docker compose -f docker-compose.prod.yml up -d --build --force-recreate
+# ============================================
+
+services:
+  # ── PostgreSQL Database ──
+  postgres:
+    image: postgres:16-alpine
+    container_name: saas-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sistema_ventas_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Admin123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - saas-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d sistema_ventas_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    ports:
+      # Expose 5433 to host to enable remote pgAdmin access without local port conflicts
+      - "5433:5432"
+
+  # ── NestJS Backend API ──
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: saas-backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env.production
+    environment:
+      - NODE_ENV=production
+      - DB_HOST=postgres
+      - DB_PORT=5432
+    volumes:
+      - uploads_data:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - saas-network
+    # Zero exposed ports on host. Internal routing only (Nginx / Nginx Proxy Manager).
+
+  # ── Angular Frontend (Nginx Runner) ──
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: saas-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    networks:
+      - saas-network
+    # In production behind Nginx Proxy Manager, traffic reaches frontend through saas-network.
+    # If NPM runs on the host network, uncomment the port mapping below or attach NPM to saas-network:
+    # ports:
+    #   - "8080:80"
+
+# ── Isolated Internal Bridge Network ──
+networks:
+  saas-network:
+    driver: bridge
+    name: saas-network
+
+# ── Persistent Storage Volumes ──
+volumes:
+  postgres_data:
+    name: saas-postgres-data
+  uploads_data:
+    name: saas-uploads-data
